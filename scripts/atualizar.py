@@ -83,6 +83,31 @@ def chart(sym):
             "p": m.get("regularMarketPrice"), "pc": m.get("chartPreviousClose"), "t": m.get("regularMarketTime"),
             "d0": days[0], "dd": [days[i] - days[i - 1] for i in range(1, len(days))], "c": [p[1] for p in pts]}
 
+# ---------- Histórico longo e intradiário (um arquivo por ativo em hx/) ----------
+def fname(sym): return re.sub(r"[^A-Za-z0-9]", "_", sym) + ".json"
+
+def yraw(sym, rng, itv):
+    j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?range={rng}&interval={itv}&includePrePost=false")
+    x = j["chart"]["result"][0]
+    return [(ts, float("%.5g" % v)) for ts, v in zip(x.get("timestamp") or [], x["indicators"]["quote"][0]["close"]) if v is not None]
+
+def extra(sym, key):
+    """max: semanal desde a entrada na bolsa; d1/d5: intradiário (5 e 30 min)."""
+    out = {}
+    try:
+        pts = yraw(sym, "max", "1wk")
+        days = [round(t / 86400) for t, _ in pts]
+        if len(pts) > 1:
+            out["max"] = {"d0": days[0], "dd": [days[i] - days[i - 1] for i in range(1, len(days))], "c": [v for _, v in pts]}
+    except Exception: pass
+    for k, rng, itv in (("d1", "1d", "5m"), ("d5", "5d", "30m")):
+        try:
+            pts = yraw(sym, rng, itv)
+            if len(pts) > 1:
+                out[k] = {"t0": pts[0][0], "dt": [round((pts[i][0] - pts[i - 1][0]) / 60) for i in range(1, len(pts))], "c": [v for _, v in pts]}
+        except Exception: pass
+    return key, out
+
 # ---------- Banco Central ----------
 def bcb(code, n):
     return jget(f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados/ultimos/{n}?formato=json")
@@ -145,6 +170,16 @@ def main():
         h = hist.get(r["t"])
         if h and r["c"] is None and len(h["c"]) > 1: r["c"] = round((h["c"][-1] / h["c"][-2] - 1) * 100, 2)
     save("br.json", br); save("us.json", us); save("hist.json", hist)
+    hx = os.path.join(SITE, "hx"); os.makedirs(hx, exist_ok=True); ok = 0
+    with ThreadPoolExecutor(6) as ex:
+        for key, out in ex.map(lambda s: extra(s, s.replace(".SA", "")), syms):
+            if not out: continue
+            path = os.path.join(hx, fname(key))
+            try: prev = json.load(open(path))
+            except Exception: prev = {}
+            prev.update(out); ok += 1
+            json.dump(prev, open(path, "w"), separators=(",", ":"))
+    log.append(f"Yahoo longo/intradiário: {ok} ativos")
     # Macro
     idx = os.path.join(SITE, "index.html"); s = open(idx, encoding="utf-8").read()
     try:

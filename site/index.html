@@ -162,9 +162,11 @@ th .arr{color:var(--accent)}
 .kv div{padding:7px 0;border-bottom:1px solid var(--line)}
 .kv div:nth-child(odd){color:var(--muted)}
 .kv div:nth-child(even){font-family:var(--f-num);text-align:right}
-.perf{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px;margin-top:14px}
-.perf div{border-radius:12px;padding:8px;text-align:center;font-family:var(--f-num);font-size:13px;font-weight:600}
-.perf div small{display:block;font-family:var(--f-body);font-size:11px;font-weight:600;color:var(--muted)}
+.perf{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px;margin-top:14px}
+.perf div,.perf button{border-radius:12px;padding:8px;text-align:center;font-family:var(--f-num);font-size:13px;font-weight:600;border:1.5px solid transparent;cursor:pointer;box-shadow:none;transition:border-color .15s,transform .15s}
+.perf button:hover{transform:translateY(-1px)}
+.perf button[aria-pressed="true"]{border-color:var(--ink)}
+.perf div small,.perf button small{display:block;font-family:var(--f-body);font-size:11px;font-weight:600;color:var(--muted)}
 .perf .up{background:var(--upbg)} .perf .down{background:var(--downbg)} .perf .na{background:var(--surface2);color:var(--muted)}
 /* modal da ação */
 .modal{position:fixed;inset:0;z-index:50;background:rgba(5,7,12,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));animation:fade .18s ease both}
@@ -509,22 +511,46 @@ function renderHeat(){
   const secs=Object.entries(by).sort((a,b)=>b[1].length-a[1].length);
   $("#heat").innerHTML=secs.map(([s,rs])=>`<div class="sector"><h4>${esc(s)}</h4><div class="tiles">${rs.map(r=>{const v=perVal(r);return `<button class="tile" style="background:${tileColor(v)}" data-t="${esc(r.t)}" data-m="${hm.m}" title="${esc(r.n)}"><span class="tk">${esc(r.t)}</span><span class="pc">${pct(v,hm.p==="d"?2:1)}</span></button>`}).join("")}</div></div>`).join("");
 }
-function chartSVG(sym,cur){const s=series(sym);if(!s)return`<p class="muted">Sem histórico de 1 ano para este ativo nesta versão. A variação do dia e os indicadores estão ao lado.</p>`;
+// ---------- Gráfico da ação com períodos ----------
+const HX={};const hxName=s=>s.replace(/[^A-Za-z0-9]/g,"_")+".json";
+function loadHX(sym){if(HX[sym]!==undefined)return Promise.resolve(HX[sym]);
+  return fetch("hx/"+hxName(sym),{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null).then(j=>(HX[sym]=j))}
+const RANGES=[["d1","Dia"],["d5","1 semana"],["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["max","Desde o início"]];
+function intra(o){if(!o||!o.c||o.c.length<2)return null;let t=o.t0*1000;const out=[[t,o.c[0]]];o.dt.forEach((d,i)=>{t+=d*6e4;out.push([t,o.c[i+1]])});return out}
+function weekly(o){if(!o||!o.c||o.c.length<2)return null;let d=o.d0;const out=[[d*864e5,o.c[0]]];o.dd.forEach((x,i)=>{d+=x;out.push([d*864e5,o.c[i+1]])});return out}
+function pointsFor(sym,k){const s=series(sym);const daily=s?s.map(p=>[p[0]*864e5,p[1]]):null;const hx=HX[sym]||{};
+  const tail=days=>{if(!daily)return null;const t=daily[daily.length-1][0]-days*864e5;let i=daily.findIndex(p=>p[0]>=t);i=Math.max(0,i-1);const r=daily.slice(i);return r.length>1?r:null};
+  if(k==="d1")return intra(hx.d1)||tail(1);
+  if(k==="d5")return intra(hx.d5)||tail(7);
+  if(k==="m1")return tail(30);if(k==="m6")return tail(182);if(k==="y1")return daily;
+  if(k==="ytd"){if(!daily)return null;const y=new Date(daily[daily.length-1][0]).getUTCFullYear(),st=Date.UTC(y,0,1);let i=daily.findIndex(p=>p[0]>=st);i=Math.max(0,i-1);return daily.slice(i)}
+  if(k==="max"){const w=weekly(hx.max);if(!w)return null;if(daily){const lw=w[w.length-1][0];daily.forEach(p=>{if(p[0]>lw)w.push(p)})}return w}
+  return daily}
+function maxChange(sym){const w=pointsFor(sym,"max");return w?(w[w.length-1][1]/w[0][1]-1)*100:null}
+function tfmt(ms,span,long){const d=new Date(ms);
+  if(span<=1.6*864e5)return d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+(long?" · "+d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}):"");
+  if(span<=10*864e5)return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+(long?" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"");
+  if(long)return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",timeZone:"UTC"});
+  if(span<=75*864e5)return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",timeZone:"UTC"});
+  if(span<=420*864e5)return d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit",timeZone:"UTC"});
+  return String(d.getUTCFullYear())}
+function chartSVG(sym,cur,k="y1"){const s=pointsFor(sym,k);
+  if(!s)return k==="max"?`<p class="muted" style="padding:40px 0;text-align:center">O histórico completo deste ativo ainda não está disponível nesta versão.</p>`:`<p class="muted">Sem histórico para este ativo nesta versão. A variação do dia e os indicadores estão ao lado.</p>`;
   const W=800,Hh=260,pl=8,pr=58,pt=10,pb=22;const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
   const X=i=>pl+(i/(s.length-1))*(W-pl-pr),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
-  const d=s.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");
-  let g="";for(let k=0;k<=4;k++){const v=mn+(mx-mn)*k/4;const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,v>=1000?0:2)}</text>`}
-  const months=[];let lm=-1;s.forEach((p,i)=>{const dt=new Date(p[0]*864e5);const m=dt.getUTCMonth();if(m!==lm){lm=m;if(i>5&&i<s.length-5)months.push([i,dt])}});
-  g+=months.filter((_,k)=>k%2===0).map(([i,dt])=>`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${dt.toLocaleDateString("pt-BR",{month:"short",year:"2-digit",timeZone:"UTC"})}</text>`).join("");
+  const d=s.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");const span=s[s.length-1][0]-s[0][0];
+  let g="";for(let q=0;q<=4;q++){const v=mn+(mx-mn)*q/4;const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,v>=1000?0:2)}</text>`}
+  const nt=6;let last="";for(let q=0;q<nt;q++){const i=Math.round((q+.5)/nt*(s.length-1));const lb=tfmt(s[i][0],span);if(lb===last)continue;last=lb;g+=`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${lb}</text>`}
   const li=s.length-1;
-  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,cur:cur||(v=>fmt(v))};
-  return `<div class="chartbox"><div class="selinfo" id="selinfo"><span class="muted">Clique e arraste no gráfico (ou clique no início e depois no fim) para ver a variação de um período.</span></div>
-  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)} em 12 meses">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg></div>`}
+  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,cur:cur||(v=>fmt(v))};
+  return `<div class="selinfo" id="selinfo"><span class="muted">${SELHINT}</span></div>
+  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
+const SELHINT="Clique num cartão acima para mudar o período. Clique e arraste no gráfico (ou clique no início e no fim) para ver a variação de um trecho.";
 // ---------- Seleção de período no gráfico ----------
 let CHART=null,SEL={a:null,b:null,drag:false,moved:false};
 function chIdx(e){const c=CHART,svg=$("#chartsvg"),r=svg.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*c.W;
   return Math.max(0,Math.min(c.s.length-1,Math.round((x-c.pl)/(c.W-c.pl-c.pr)*(c.s.length-1))))}
-const dfmt=d=>new Date(d*864e5).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",timeZone:"UTC"});
+const dfmt=ms=>tfmt(ms,CHART?CHART.span:1e12,true);
 function drawSel(){const c=CHART,g=$("#selg"),svg=$("#chartsvg"),info=$("#selinfo");if(!c||!g)return;
   if(SEL.a==null||SEL.b==null||SEL.a===SEL.b){g.innerHTML=SEL.a!=null?`<line x1="${c.X(SEL.a)}" x2="${c.X(SEL.a)}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".6"/><circle cx="${c.X(SEL.a)}" cy="${c.Y(c.s[SEL.a][1])}" r="4.5" fill="var(--ink)"/>`:"";svg.classList.remove("selon");
     if(SEL.a!=null)info.innerHTML=`<span><b>${dfmt(c.s[SEL.a][0])}</b> · ${c.cur(c.s[SEL.a][1])}</span><span class="muted">Agora clique no fim do período.</span>`;return}
@@ -533,9 +559,9 @@ function drawSel(){const c=CHART,g=$("#selg"),svg=$("#chartsvg"),info=$("#selinf
   g.innerHTML=`<rect x="${c.X(a)}" y="${c.pt}" width="${c.X(b)-c.X(a)}" height="${c.Hh-c.pt-c.pb}" fill="${col}" opacity=".12"/><path d="${seg}" fill="none" stroke="${col}" stroke-width="2.5"/>
     ${[a,b].map(i=>`<line x1="${c.X(i)}" x2="${c.X(i)}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="${col}" stroke-dasharray="3 3"/><circle cx="${c.X(i)}" cy="${c.Y(c.s[i][1])}" r="4.5" fill="${col}"/>`).join("")}`;
   svg.classList.add("selon");
-  const dias=c.s[b][0]-c.s[a][0];
-  info.innerHTML=`<span><b>${dfmt(c.s[a][0])}</b> → <b>${dfmt(c.s[b][0])}</b> <span class="muted">(${dias} dias)</span></span><span>${c.cur(pa)} → ${c.cur(pb)}</span><span class="pill ${cls(ch)}" style="font-weight:700">${up?"▲":"▼"} ${pct(ch,2)}</span><button type="button" id="selclr" class="mini">Limpar</button>`;
-  $("#selclr").onclick=()=>{SEL={a:null,b:null,drag:false,moved:false};drawSel();$("#selinfo").innerHTML=`<span class="muted">Clique e arraste no gráfico (ou clique no início e depois no fim) para ver a variação de um período.</span>`}}
+  const dias=Math.round((c.s[b][0]-c.s[a][0])/864e5),dur=dias>=1?`(${dias} ${dias===1?"dia":"dias"})`:"";
+  info.innerHTML=`<span><b>${dfmt(c.s[a][0])}</b> → <b>${dfmt(c.s[b][0])}</b> <span class="muted">${dur}</span></span><span>${c.cur(pa)} → ${c.cur(pb)}</span><span class="pill ${cls(ch)}" style="font-weight:700">${up?"▲":"▼"} ${pct(ch,2)}</span><button type="button" id="selclr" class="mini">Limpar</button>`;
+  $("#selclr").onclick=()=>{SEL={a:null,b:null,drag:false,moved:false};drawSel();$("#selinfo").innerHTML=`<span class="muted">${SELHINT}</span>`}}
 function drawHover(i){const c=CHART,g=$("#hovg");if(!g)return;if(i==null){g.innerHTML="";return}
   const x=c.X(i),y=c.Y(c.s[i][1]),txt=`${dfmt(c.s[i][0])}  ${c.cur(c.s[i][1])}`,w=txt.length*6.6+16,tx=Math.min(Math.max(x-w/2,c.pl),c.W-c.pr-w);
   g.innerHTML=`<line x1="${x}" x2="${x}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="var(--muted)" opacity=".5"/><circle cx="${x}" cy="${y}" r="3.5" fill="var(--ink)"/><rect x="${tx}" y="${c.pt}" width="${w}" height="20" rx="6" fill="var(--surface2)" stroke="var(--line2)"/><text class="hovt" x="${tx+w/2}" y="${c.pt+14}" text-anchor="middle">${txt}</text>`}
@@ -547,21 +573,27 @@ document.addEventListener("pointermove",e=>{if(!CHART||!$("#chartsvg"))return;co
 document.addEventListener("pointerup",e=>{if(!SEL.drag)return;SEL.drag=false;const i=chIdx(e);
   if(!SEL.moved){if(SEL.pend){SEL.b=i}else{SEL.a=i;SEL.b=null}drawSel()}});
 document.addEventListener("pointerleave",()=>drawHover(null));
+let DET=null;
+function perfBtn(k,l,v,on){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":pct(v,1)}</button>`}
+function showRange(){if(!DET)return;SEL={a:null,b:null,drag:false,moved:false};$("#chartbox").innerHTML=chartSVG(DET.t,DET.cur,DET.k)}
 function openDetail(t,m){
   const r=(m==="us"?US:BR).find(x=>x.t===t)||(m==="us"?BR:US).find(x=>x.t===t);if(!r)return;m=US.includes(r)?"us":"br";
   const h=H[t];const cur=m==="us"?usd:v=>"R$ "+fmt(v);
-  const perf=[["Dia",r.c],["1 semana",retOver(t,7)],["1 mês",retOver(t,30)],["3 meses",retOver(t,91)],["6 meses",retOver(t,182)],["No ano",ytd(t)],["12 meses",retOver(t,365)]];
+  const pv={d1:r.c,d5:retOver(t,7),m1:retOver(t,30),m6:retOver(t,182),ytd:ytd(t),y1:retOver(t,365),max:HX[t]?maxChange(t):undefined};
   const kv=[];
   if(h){kv.push(["Mínima 52 semanas",cur(h.lo)],["Máxima 52 semanas",cur(h.hi)],["Volatilidade anual",fp(vol(t))],["Maior queda no ano (drawdown)",fp(mdd(t))])}
   if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
   $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(t)}</span><span class="muted">${esc(r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
-  <div class="perf">${perf.map(([l,v])=>`<div class="${v==null?"na":cls(v)||"na"}"><small>${l}</small>${pct(v,1)}</div>`).join("")}</div>${chartSVG(t,cur)}</div>
+  <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k])).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,"y1")}</div></div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
+  DET={t,cur,k:"y1"};
+  $("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};
+  const hadHX=HX[t]!==undefined;loadHX(t).then(()=>{if(!DET||DET.t!==t)return;const el=$("#perf [data-k=max]");if(el)el.outerHTML=perfBtn("max","Desde o início",maxChange(t),DET.k==="max");if(!hadHX&&DET.k!=="y1")showRange()});
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
-function closeDetail(){CHART=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
+function closeDetail(){CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
 $("#modal").addEventListener("click",e=>{if(e.target.isConnected&&!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
 document.addEventListener("click",e=>{if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
