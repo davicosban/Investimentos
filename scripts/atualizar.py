@@ -165,10 +165,10 @@ def main():
         log.append(f"BCB FALHOU: {e}")
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
     save("asof.json", {"asof": f"{now:%d/%m/%Y %H:%M}"})
-    s = re.sub(r'const ASOF="[^"]*";', f'const ASOF="{now:%d/%m/%Y %H:%M}";', s, count=1)
+    s = re.sub(r'(let|const) ASOF="[^"]*";', lambda m: f'{m.group(1)} ASOF="{now:%d/%m/%Y %H:%M}";', s, count=1)
     s = re.sub(r'\$\("#asof"\)\.textContent=`Dados de \$\{ASOF\}[^`]*`',
                '$("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`', s, count=1)
-    for marca in ("const PRODUTOS=[", "const ASOF=", "function renderOverview", "</script>"):
+    for marca in ("const PRODUTOS=[", " ASOF=", "function renderOverview", "</script>"):
         if marca not in s: raise SystemExit(f"index.html ficaria quebrado (falta {marca}); nada foi salvo")
     open(idx, "w", encoding="utf-8").write(s)
     print("\n".join(log))
