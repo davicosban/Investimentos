@@ -6,7 +6,9 @@ name: Cotações a cada 15 min (pregão)
 on:
   schedule:
     - cron: "0 13 * * 1-5"    # 10h em Brasília
+    - cron: "7 15 * * 1-5"    # reserva, caso o disparo das 10h não aconteça
     - cron: "0 19 * * 1-5"    # 16h em Brasília (substitui a rodada anterior, que tem limite de 6 h)
+    - cron: "40 20 * * 1-5"   # reserva para a rodada completa das 18h30
   workflow_dispatch:
 
 permissions:
@@ -42,3 +44,17 @@ jobs:
             git push -q || (git pull -q --rebase -X theirs origin main && git push -q) || echo "push falhou"
             sleep 900
           done
+      - name: Rodada completa às 18h30 (Brasília), com histórico
+        if: always()
+        run: |
+          agora=$(TZ=America/Sao_Paulo date +%H%M)
+          if [ "$agora" -lt 1815 ]; then echo "Ainda não é fim do pregão"; exit 0; fi
+          if [ "$agora" -gt 2100 ]; then echo "Tarde demais para a rodada do dia"; exit 0; fi
+          alvo=$(TZ=America/Sao_Paulo date -d "18:30" +%s)
+          espera=$(( alvo - $(date +%s) ))
+          [ "$espera" -gt 0 ] && sleep "$espera"
+          git pull -q --rebase -X theirs origin main || true
+          python3 scripts/atualizar.py site
+          git add site
+          git diff --cached --quiet || git commit -q -m "Atualiza dados de mercado (fechamento)"
+          git push -q || (git pull -q --rebase -X theirs origin main && git push -q)
