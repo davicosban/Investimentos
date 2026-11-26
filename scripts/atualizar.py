@@ -77,7 +77,7 @@ def nasdaq():
 LONG = {}
 def chart(sym):
     """Um pedido só por ativo: histórico diário completo. Guarda 1 ano em hist.json e o resto (semanal) em LONG."""
-    j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + "?range=max&interval=1d")
+    j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?period1=0&period2={int(time.time()) + 86400}&interval=1d")
     x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
     off = m.get("gmtoffset") or 0
     allp = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
@@ -226,7 +226,7 @@ def main():
             hxsave(sym.replace(".SA", ""), {"d5": d5}); ok += 1; falhas = 0
         else:
             falhas += 1
-            if falhas >= 8: log.append("Yahoo intradiário: muitas falhas seguidas, parei"); break
+            if falhas >= 3: log.append("Yahoo intradiário: muitas falhas seguidas, parei"); break
         time.sleep(0.8)
     log.append(f"Yahoo intradiário: {ok} ativos" + (f" (1º erro: {erro1[:160]})" if erro1 else ""))
     # Macro
