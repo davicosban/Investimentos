@@ -369,6 +369,12 @@ section{animation:none}
  .subtabs::-webkit-scrollbar{display:none}
  .subtabs button{flex:0 0 auto;font-size:13px;padding:7px 12px}
 }
+.tape.marquee{overflow:hidden}
+.tape.marquee .in{padding:0;margin:0;animation:tape var(--dur,40s) linear infinite}
+.tape.marquee .seq{display:flex;padding-left:18px}
+.tape.marquee .seq button:last-child{border-right:1px solid var(--tape-line)}
+.tape.marquee:hover .in,.tape.marquee.hold .in{animation-play-state:paused}
+@keyframes tape{to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -646,6 +652,15 @@ const RM=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 // números que sobem até o valor (mantém prefixo, sufixo e casas decimais)
 function countUp(root,sel=".idx .val,.dhead .px"){if(!root||RM())return;root.querySelectorAll(sel).forEach(el=>{const t=el.textContent,m=t.match(/-?\d[\d.]*(?:,\d+)?/);if(!m)return;const n=parseFloat(m[0].replace(/\./g,"").replace(",","."));if(!isFinite(n)||n===0)return;const dec=(m[0].split(",")[1]||"").length,pre=t.slice(0,m.index),suf=t.slice(m.index+m[0].length),th=m[0].includes(".")||Math.abs(n)>=1000;const f=v=>pre+v.toLocaleString("pt-BR",{minimumFractionDigits:dec,maximumFractionDigits:dec,useGrouping:th})+suf;const t0=performance.now(),D=750;el.style.fontVariantNumeric="tabular-nums";const step=now=>{const k=Math.min(1,(now-t0)/D),e=1-Math.pow(1-k,3);el.textContent=k<1?f(n*e):t;if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)})}
 function animIn(el,dir){if(!el||RM())return;el.style.setProperty("--dx",(dir<0?-28:28)+"px");el.querySelectorAll("tbody tr:nth-child(-n+18)").forEach((r,i)=>r.style.setProperty("--i",i));el.classList.remove("view-in");void el.offsetWidth;el.classList.add("view-in");clearTimeout(el._vt);el._vt=setTimeout(()=>el.classList.remove("view-in"),1000);countUp(el)}
+let TAPE="";
+// fita: anda sozinha quando não cabe na tela (letreiro); para ao tocar ou passar o mouse
+function setupTape(){const tp=$("#tape"),inn=$("#tapeIn");if(!tp||!TAPE)return;tp.classList.remove("marquee");inn.innerHTML=TAPE;
+  if(RM()||inn.scrollWidth<=tp.clientWidth+2)return;
+  const w=inn.scrollWidth;inn.innerHTML=`<div class="seq">${TAPE}</div><div class="seq" aria-hidden="true">${TAPE.replace(/<button /g,'<button tabindex="-1" ')}</div>`;
+  inn.style.setProperty("--dur",Math.round(w/38)+"s");tp.classList.add("marquee")}
+addEventListener("resize",()=>{clearTimeout(setupTape._t);setupTape._t=setTimeout(setupTape,300)});
+{const tp=document.getElementById("tape");if(tp){const stop=()=>{tp.classList.add("hold");clearTimeout(tp._h)},go=()=>{clearTimeout(tp._h);tp._h=setTimeout(()=>tp.classList.remove("hold"),1500)};
+  tp.addEventListener("pointerdown",stop);tp.addEventListener("pointerup",go);tp.addEventListener("pointercancel",go);tp.addEventListener("pointerleave",e=>{if(e.pointerType!=="mouse")go()})}}
 const VIEWS=["mercado","favoritos","b3","eua","acoes","cambio","calc"];
 function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";const was=route.cur;VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});if(was&&was!==v)animIn($("#v-"+v),VIEWS.indexOf(v)-VIEWS.indexOf(was));route.cur=v;document.querySelectorAll("#tabs a").forEach(a=>{const on=a.getAttribute("href")==="#"+v;a.setAttribute("aria-current",on?"page":"false");if(on){const n=a.parentElement;if(n.scrollWidth>n.clientWidth)n.scrollTo({left:a.offsetLeft-n.clientWidth/2+a.offsetWidth/2,behavior:was?"smooth":"auto"})}});store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
 addEventListener("hashchange",route);
@@ -670,7 +685,7 @@ function renderOverview(){
   {const it=[["^BVSP","Ibovespa",v=>fmt(v,0)],["^GSPC","S&P 500",v=>fmt(v,0)],["^IXIC","Nasdaq",v=>fmt(v,0)],["BRL=X","Dólar",v=>"R$ "+fmt(v,3)]];
    const t=it.filter(([k])=>H[k]).map(([k,n,f])=>{const d=dchg(k);return `<button type="button" data-t="${k}" data-m="idx"><span class="n">${n}</span><span class="v">${f(H[k].p)}</span><span class="${cls(d)}">${pct(d)}</span></button>`});
    t.push(`<button type="button" data-t="selic" data-m="macro"><span class="n">Selic</span><span class="v">${fmt(MACRO.selic)}%</span></button>`,`<button type="button" data-t="cdi" data-m="macro"><span class="n">CDI</span><span class="v">${fmt(MACRO.cdi)}%</span></button>`,`<button type="button" data-t="ipca" data-m="macro"><span class="n">IPCA 12m</span><span class="v">${fmt(MACRO.ipca12)}%</span></button>`);
-   $("#tapeIn").innerHTML=t.join("")}
+   TAPE=t.join("");setupTape()}
   const chips=[["Selic",fmt(MACRO.selic)+"% a.a.","selic"],["CDI",fmt(MACRO.cdi)+"% a.a.","cdi"],["IPCA 12 meses",fmt(MACRO.ipca12)+"%","ipca"],["Juro real (CDI − IPCA)",fmt(((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100)+"% a.a.","juro"],["Poupança",fmt(poupA)+"% a.a.","poup"],["Dólar PTAX","R$ "+fmt(MACRO.ptax,4),"ptax"]];
   $("#macro").innerHTML=chips.map(([a,b,k])=>`<span class="chip" data-t="${k}" data-m="macro" role="button" tabindex="0" style="cursor:pointer">${a}<b>${b}</b></span>`).join("");
   const ib=dchg("^BVSP"),sp=dchg("^GSPC"),up=BR.slice(0,100).filter(r=>r.c>0).length,dn=BR.slice(0,100).filter(r=>r.c<0).length;
