@@ -190,6 +190,19 @@ td.fv,th.fv{width:34px;padding-left:4px!important;padding-right:0!important;text
 .modal .sheet{max-width:1180px;margin:0 auto;animation:rise .25s ease both}
 .modal .panel{box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
 @keyframes fade{from{opacity:0}to{opacity:1}}
+/* animações (leves; desligadas com "reduzir movimento") */
+@keyframes viewin{from{opacity:0;transform:translateY(10px)}}
+@keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes fadeout{to{opacity:0}}
+@keyframes sinkout{to{transform:translateY(12px);opacity:0}}
+.view-in{animation:viewin .32s cubic-bezier(.2,.7,.2,1) both}
+.view-in .panel{animation:viewin .4s cubic-bezier(.2,.7,.2,1) both}
+.view-in .panel:nth-child(2){animation-delay:.04s}.view-in .panel:nth-child(3){animation-delay:.08s}.view-in .panel:nth-child(4){animation-delay:.12s}.view-in .panel:nth-child(n+5){animation-delay:.16s}
+.spark,#chartsvg{animation:reveal .9s cubic-bezier(.3,.7,.2,1) both}
+.modal.closing{animation:fadeout .16s ease both}.modal.closing .sheet{animation:sinkout .16s ease both}
+#tabs a{transition:background-color .2s,color .2s}
+.panel.idx{transition:transform .2s,box-shadow .2s}@media (hover:hover){.panel.idx:hover{transform:translateY(-2px)}}
+
 /* calc */
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .form label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);font-weight:600}
@@ -507,8 +520,12 @@ function dchg(sym){const s=series(sym);if(!s||s.length<2)return null;return (s[s
 function sparkSVG(sym,w=300,h=64){const s=series(sym);if(!s)return"";const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const pts=s.map((p,i)=>[(i/(s.length-1))*w,h-2-((p[1]-mn)/(mx-mn||1))*(h-4)]);const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join("");const col=up?"var(--up)":"var(--down)";return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`}
 
 // ---------- routing ----------
+const RM=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+// números que sobem até o valor (mantém prefixo, sufixo e casas decimais)
+function countUp(root,sel=".idx .val,.dhead .px"){if(!root||RM())return;root.querySelectorAll(sel).forEach(el=>{const t=el.textContent,m=t.match(/-?\d[\d.]*(?:,\d+)?/);if(!m)return;const n=parseFloat(m[0].replace(/\./g,"").replace(",","."));if(!isFinite(n)||n===0)return;const dec=(m[0].split(",")[1]||"").length,pre=t.slice(0,m.index),suf=t.slice(m.index+m[0].length),th=m[0].includes(".")||Math.abs(n)>=1000;const f=v=>pre+v.toLocaleString("pt-BR",{minimumFractionDigits:dec,maximumFractionDigits:dec,useGrouping:th})+suf;const t0=performance.now(),D=750;el.style.fontVariantNumeric="tabular-nums";const step=now=>{const k=Math.min(1,(now-t0)/D),e=1-Math.pow(1-k,3);el.textContent=k<1?f(n*e):t;if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)})}
+function animIn(el){if(!el||RM())return;el.classList.remove("view-in");void el.offsetWidth;el.classList.add("view-in");countUp(el)}
 const VIEWS=["mercado","favoritos","b3","eua","acoes","cambio","calc"];
-function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
+function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";const was=route.cur;VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});if(was&&was!==v)animIn($("#v-"+v));route.cur=v;document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
 addEventListener("hashchange",route);
 
 // ---------- overview ----------
@@ -526,7 +543,7 @@ segs("#dsPer",v=>{dsDays=+v;renderDestaques()});
 function renderOverview(){
   renderDestaques();
   const idx=[["^BVSP","Ibovespa","pts"],["^GSPC","S&P 500","pts"],["^IXIC","Nasdaq","pts"],["BRL=X","Dólar (US$ em R$)","brl"]];
-  $("#idxs").innerHTML=idx.map(([s,n,u])=>{const h=H[s];if(!h)return"";const d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="idx" style="cursor:pointer"><div class="lbl">${n}</div><div class="val">${u==="brl"?"R$ "+fmt(h.p,4):fmt(h.p,0)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
+  setTimeout(()=>countUp($("#idxs")));$("#idxs").innerHTML=idx.map(([s,n,u])=>{const h=H[s];if(!h)return"";const d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="idx" style="cursor:pointer"><div class="lbl">${n}</div><div class="val">${u==="brl"?"R$ "+fmt(h.p,4):fmt(h.p,0)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
   const poupA=(Math.pow(1+MACRO.poupMes/100,12)-1)*100;
   const chips=[["Selic",fmt(MACRO.selic)+"% a.a.","selic"],["CDI",fmt(MACRO.cdi)+"% a.a.","cdi"],["IPCA 12 meses",fmt(MACRO.ipca12)+"%","ipca"],["Juro real (CDI − IPCA)",fmt(((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100)+"% a.a.","juro"],["Poupança",fmt(poupA)+"% a.a.","poup"],["Dólar PTAX","R$ "+fmt(MACRO.ptax,4),"ptax"]];
   $("#macro").innerHTML=chips.map(([a,b,k])=>`<span class="chip" data-t="${k}" data-m="macro" role="button" tabindex="0" style="cursor:pointer">${a}<b>${b}</b></span>`).join("");
@@ -578,7 +595,7 @@ const fxR=v=>v==null?"–":"R$ "+fmt(v,v<0.01?5:v<1?4:4);
 const fxInfo=t=>FX.find(f=>f[0]===t||(t==="BRL=X"&&f[0]==="USDBRL=X"));
 function renderFX(){const list=FX.map(f=>({f,s:fxSym(f[0])})).filter(x=>x.s);
   if(!list.length){$("#fxCards").innerHTML=`<p class="muted">As cotações de câmbio chegam na próxima atualização automática.</p>`;return}
-  $("#fxCards").innerHTML=list.slice(0,4).map(({f,s})=>{const h=H[s],d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="fx" style="cursor:pointer"><div class="lbl">${f[1]} · ${f[2]}</div><div class="val">${fxR(h.p)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
+  setTimeout(()=>countUp($("#fxCards")));$("#fxCards").innerHTML=list.slice(0,4).map(({f,s})=>{const h=H[s],d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="fx" style="cursor:pointer"><div class="lbl">${f[1]} · ${f[2]}</div><div class="val">${fxR(h.p)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
   $("#fxt").innerHTML=`<thead><tr><th class="fv"></th><th>Moeda</th><th class="n">Em R$</th><th class="n">Dia</th><th class="n">1 mês</th><th class="n">No ano</th><th class="n">12 meses</th></tr></thead><tbody>${list.map(({f,s})=>`<tr data-t="${s}" data-m="fx"><td class="fv">${starBtn("fx",s)}</td><td><span class="fxcode">${f[2]}</span> ${f[1]}</td><td class="n">${fxR(H[s].p)}</td><td class="n">${pill(dchg(s))}</td><td class="n">${pill(retOver(s,30))}</td><td class="n">${pill(ytd(s))}</td><td class="n">${pill(retOver(s,365))}</td></tr>`).join("")}</tbody>`;
   const u=fxSym("USDBRL=X"),e=fxSym("EURBRL=X");
   if(u)$("#fxLede").innerHTML=`Dólar a <b>${fxR(H[u].p)}</b> (${`<b class="${cls(dchg(u))}">${pct(dchg(u))}</b>`} no dia)${e?`, euro a <b>${fxR(H[e].p)}</b>`:""}. Em 12 meses o dólar ${retOver(u,365)>=0?"subiu":"caiu"} <b class="${cls(retOver(u,365))}">${pct(Math.abs(retOver(u,365)),1).replace("+","")}</b> contra o real.`;
@@ -739,6 +756,7 @@ function openDetail(t,m){
   DET={t,cur,k:dk};
   $("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};
   const hadHX=HX[t]!==undefined;loadHX(t).then(()=>{if(!DET||DET.t!==t)return;const el=$("#perf [data-k=max]");if(el)el.outerHTML=perfBtn("max","Desde o início",maxChange(t),DET.k==="max");if(!hadHX&&DET.k!==dk)showRange()});
+  {const md=$("#modal");if(md.classList.contains("closing"))md.classList.add("reopen")}setTimeout(()=>countUp($("#detail")));
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
 // ---------- Pop-up dos indicadores (Selic, CDI, IPCA...) ----------
@@ -762,9 +780,11 @@ function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
     <p class="muted small" style="margin-bottom:0">${mode==="pp"?"As variações dos cartões estão em pontos percentuais (p.p.): diferença entre a taxa no fim e no começo do período.":"Variação percentual da cotação no período."}</p></div></div>`;
     $("#dClose").onclick=closeDetail;DET={t:id,cur:vf,k:mk};
     if(cs)$("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};};
+  {const md=$("#modal");if(md.classList.contains("closing"))md.classList.add("reopen")}setTimeout(()=>countUp($("#detail")));
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;
   if(MH)show();else{$("#detail").innerHTML=`<div class="panel"><p class="muted">Carregando…</p></div>`;loadMH().then(()=>{if(!$("#modal").hidden)show()})}}
-function closeDetail(){CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
+function closeDetail(){const md=$("#modal");if(!RM()&&!md.hidden&&!md.classList.contains("closing")){md.classList.add("closing");setTimeout(()=>{md.classList.remove("closing");if(md.classList.contains("reopen")){md.classList.remove("reopen");return}closeNow()},160);return}closeNow()}
+function closeNow(){CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
 $("#modal").addEventListener("click",e=>{if(e.target.isConnected&&!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
 document.addEventListener("click",e=>{const sb=e.target.closest("[data-fav]");if(sb){e.preventDefault();toggleFav(sb.dataset.fav);return}if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
