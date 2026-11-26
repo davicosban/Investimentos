@@ -13,10 +13,6 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   atualizar:
     runs-on: ubuntu-latest
@@ -46,6 +42,10 @@ jobs:
   publicar:
     needs: atualizar
     runs-on: ubuntu-latest
+    # só a publicação espera na fila; baixar dados não trava a publicação de mudanças no app
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
