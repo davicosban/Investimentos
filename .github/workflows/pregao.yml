@@ -45,7 +45,7 @@ jobs:
             sleep 900
           done
       - name: Rodada completa às 18h30 (Brasília), com histórico
-        if: always()
+        if: success() || failure()
         run: |
           agora=$(TZ=America/Sao_Paulo date +%H%M)
           if [ "$agora" -lt 1815 ]; then echo "Ainda não é fim do pregão"; exit 0; fi
