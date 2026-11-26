@@ -191,11 +191,14 @@ td.fv,th.fv{width:34px;padding-left:4px!important;padding-right:0!important;text
 .modal .panel{box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 /* animações (leves; desligadas com "reduzir movimento") */
-@keyframes viewin{from{opacity:0;transform:translateY(10px)}}
+@keyframes viewin{from{opacity:0;transform:translateY(14px)}}
+@keyframes slidein{from{opacity:0;transform:translateX(var(--dx,28px))}}
+@keyframes rowin{from{opacity:0;transform:translateY(8px)}}
 @keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @keyframes fadeout{to{opacity:0}}
 @keyframes sinkout{to{transform:translateY(12px);opacity:0}}
-.view-in{animation:viewin .32s cubic-bezier(.2,.7,.2,1) both}
+.view-in{animation:slidein .38s cubic-bezier(.2,.7,.2,1) both}
+.view-in tbody tr:nth-child(-n+18){animation:rowin .4s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(.12s + var(--i,0) * 22ms)}
 .view-in .panel{animation:viewin .4s cubic-bezier(.2,.7,.2,1) both}
 .view-in .panel:nth-child(2){animation-delay:.04s}.view-in .panel:nth-child(3){animation-delay:.08s}.view-in .panel:nth-child(4){animation-delay:.12s}.view-in .panel:nth-child(n+5){animation-delay:.16s}
 .spark,#chartsvg{animation:reveal .9s cubic-bezier(.3,.7,.2,1) both}
@@ -523,9 +526,9 @@ function sparkSVG(sym,w=300,h=64){const s=series(sym);if(!s)return"";const ys=s.
 const RM=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 // números que sobem até o valor (mantém prefixo, sufixo e casas decimais)
 function countUp(root,sel=".idx .val,.dhead .px"){if(!root||RM())return;root.querySelectorAll(sel).forEach(el=>{const t=el.textContent,m=t.match(/-?\d[\d.]*(?:,\d+)?/);if(!m)return;const n=parseFloat(m[0].replace(/\./g,"").replace(",","."));if(!isFinite(n)||n===0)return;const dec=(m[0].split(",")[1]||"").length,pre=t.slice(0,m.index),suf=t.slice(m.index+m[0].length),th=m[0].includes(".")||Math.abs(n)>=1000;const f=v=>pre+v.toLocaleString("pt-BR",{minimumFractionDigits:dec,maximumFractionDigits:dec,useGrouping:th})+suf;const t0=performance.now(),D=750;el.style.fontVariantNumeric="tabular-nums";const step=now=>{const k=Math.min(1,(now-t0)/D),e=1-Math.pow(1-k,3);el.textContent=k<1?f(n*e):t;if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)})}
-function animIn(el){if(!el||RM())return;el.classList.remove("view-in");void el.offsetWidth;el.classList.add("view-in");countUp(el)}
+function animIn(el,dir){if(!el||RM())return;el.style.setProperty("--dx",(dir<0?-28:28)+"px");el.querySelectorAll("tbody tr:nth-child(-n+18)").forEach((r,i)=>r.style.setProperty("--i",i));el.classList.remove("view-in");void el.offsetWidth;el.classList.add("view-in");clearTimeout(el._vt);el._vt=setTimeout(()=>el.classList.remove("view-in"),1000);countUp(el)}
 const VIEWS=["mercado","favoritos","b3","eua","acoes","cambio","calc"];
-function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";const was=route.cur;VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});if(was&&was!==v)animIn($("#v-"+v));route.cur=v;document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
+function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";const was=route.cur;VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});if(was&&was!==v)animIn($("#v-"+v),VIEWS.indexOf(v)-VIEWS.indexOf(was));route.cur=v;document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
 addEventListener("hashchange",route);
 
 // ---------- overview ----------
