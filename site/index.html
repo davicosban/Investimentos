@@ -491,10 +491,10 @@ segs("#dsPer",v=>{dsDays=+v;renderDestaques()});
 function renderOverview(){
   renderDestaques();
   const idx=[["^BVSP","Ibovespa","pts"],["^GSPC","S&P 500","pts"],["^IXIC","Nasdaq","pts"],["BRL=X","Dólar (US$ em R$)","brl"]];
-  $("#idxs").innerHTML=idx.map(([s,n,u])=>{const h=H[s];if(!h)return"";const d=dchg(s),y=retOver(s,365);return `<div class="panel idx"><div class="lbl">${n}</div><div class="val">${u==="brl"?"R$ "+fmt(h.p,4):fmt(h.p,0)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
+  $("#idxs").innerHTML=idx.map(([s,n,u])=>{const h=H[s];if(!h)return"";const d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="idx" style="cursor:pointer"><div class="lbl">${n}</div><div class="val">${u==="brl"?"R$ "+fmt(h.p,4):fmt(h.p,0)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
   const poupA=(Math.pow(1+MACRO.poupMes/100,12)-1)*100;
-  const chips=[["Selic",MACRO.selic+"% a.a."],["CDI",fmt(MACRO.cdi)+"% a.a."],["IPCA 12 meses",fmt(MACRO.ipca12)+"%"],["Juro real (CDI − IPCA)",fmt(((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100)+"% a.a."],["Poupança",fmt(poupA)+"% a.a."],["Dólar PTAX","R$ "+fmt(MACRO.ptax,4)]];
-  $("#macro").innerHTML=chips.map(([a,b])=>`<span class="chip">${a}<b>${b}</b></span>`).join("");
+  const chips=[["Selic",fmt(MACRO.selic)+"% a.a.","selic"],["CDI",fmt(MACRO.cdi)+"% a.a.","cdi"],["IPCA 12 meses",fmt(MACRO.ipca12)+"%","ipca"],["Juro real (CDI − IPCA)",fmt(((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100)+"% a.a.","juro"],["Poupança",fmt(poupA)+"% a.a.","poup"],["Dólar PTAX","R$ "+fmt(MACRO.ptax,4),"ptax"]];
+  $("#macro").innerHTML=chips.map(([a,b,k])=>`<span class="chip" data-t="${k}" data-m="macro" role="button" tabindex="0" style="cursor:pointer">${a}<b>${b}</b></span>`).join("");
   const ib=dchg("^BVSP"),sp=dchg("^GSPC"),up=BR.slice(0,100).filter(r=>r.c>0).length,dn=BR.slice(0,100).filter(r=>r.c<0).length;
   const pc=v=>`<b class="${cls(v)}">${pct(v)}</b>`;
   $("#heroLede").innerHTML=`Ibovespa ${pc(ib)} e S&amp;P 500 ${pc(sp)} no último pregão. Das 100 ações mais negociadas da B3, <b>${up} subiram</b> e <b>${dn} caíram</b>. CDI a <b>${fmt(MACRO.cdi)}% ao ano</b>.`;
@@ -536,6 +536,7 @@ function renderHeat(){
   $("#heat").innerHTML=secs.map(([s,rs])=>`<div class="sector"><h4>${esc(s)}</h4><div class="tiles">${rs.map(r=>{const v=perVal(r);return `<button class="tile" style="background:${tileColor(v)}" data-t="${esc(r.t)}" data-m="${hm.m}" title="${esc(r.n)}"><span class="tk">${esc(r.t)}</span><span class="pc">${pct(v,hm.p==="d"?2:1)}</span></button>`}).join("")}</div></div>`).join("");
 }
 // ---------- Câmbio ----------
+const IDXN={"^BVSP":"Ibovespa","^GSPC":"S&P 500","^IXIC":"Nasdaq"};
 const FX=[["USDBRL=X","Dólar americano","USD"],["EURBRL=X","Euro","EUR"],["GBPBRL=X","Libra esterlina","GBP"],["ARSBRL=X","Peso argentino","ARS"],["CHFBRL=X","Franco suíço","CHF"],["JPYBRL=X","Iene japonês","JPY"],["CNYBRL=X","Yuan chinês","CNY"],["CADBRL=X","Dólar canadense","CAD"],["AUDBRL=X","Dólar australiano","AUD"],["MXNBRL=X","Peso mexicano","MXN"],["CLPBRL=X","Peso chileno","CLP"],["UYUBRL=X","Peso uruguaio","UYU"]];
 const fxSym=s=>H[s]?s:(s==="USDBRL=X"&&H["BRL=X"]?"BRL=X":null);
 const fxR=v=>v==null?"–":"R$ "+fmt(v,v<0.01?5:v<1?4:4);
@@ -562,11 +563,12 @@ function loadHX(sym){if(HX[sym]!==undefined)return Promise.resolve(HX[sym]);
 const RANGES=[["d1","Dia"],["d5","1 semana"],["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["max","Desde o início"]];
 function intra(o){if(!o||!o.c||o.c.length<2)return null;let t=o.t0*1000;const out=[[t,o.c[0]]];o.dt.forEach((d,i)=>{t+=d*6e4;out.push([t,o.c[i+1]])});return out}
 function weekly(o){if(!o||!o.c||o.c.length<2)return null;let d=o.d0;const out=[[d*864e5,o.c[0]]];o.dd.forEach((x,i)=>{d+=x;out.push([d*864e5,o.c[i+1]])});return out}
-function pointsFor(sym,k){const s=series(sym);const daily=s?s.map(p=>[p[0]*864e5,p[1]]):null;const hx=HX[sym]||{};
+function pointsFor(sym,k){const cs=CUSTOM[sym];const s=cs?null:series(sym);const daily=cs?cs.pts:s?s.map(p=>[p[0]*864e5,p[1]]):null;const hx=HX[sym]||{};
   const tail=days=>{if(!daily)return null;const t=daily[daily.length-1][0]-days*864e5;let i=daily.findIndex(p=>p[0]>=t);i=Math.max(0,i-1);const r=daily.slice(i);return r.length>1?r:null};
   if(k==="d1"){const w=intra(hx.d5);if(w){const day=x=>new Date(x).toDateString(),ld=day(w[w.length-1][0]);const r=w.filter(p=>day(p[0])===ld);if(r.length>1)return r}return intra(hx.d1)||tail(1)}
   if(k==="d5")return intra(hx.d5)||tail(7);
-  if(k==="m1")return tail(30);if(k==="m6")return tail(182);if(k==="y1")return daily;
+  if(k==="m1")return tail(30);if(k==="m6")return tail(182);if(k==="y5")return tail(1827);if(k==="y1")return cs?tail(366):daily;
+  if(cs&&k==="max")return daily;
   if(k==="ytd"){if(!daily)return null;const y=new Date(daily[daily.length-1][0]).getUTCFullYear(),st=Date.UTC(y,0,1);let i=daily.findIndex(p=>p[0]>=st);i=Math.max(0,i-1);return daily.slice(i)}
   if(k==="max"){const w=weekly(hx.max);if(!w)return null;if(daily){const lw=w[w.length-1][0];daily.forEach(p=>{if(p[0]>lw)w.push(p)})}return w}
   return daily}
@@ -586,7 +588,7 @@ function chartSVG(sym,cur,k="y1"){const s=pointsFor(sym,k);
   let g="";for(let q=0;q<=4;q++){const v=mn+(mx-mn)*q/4;const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,v>=1000?0:2)}</text>`}
   const nt=6;let last="";for(let q=0;q<nt;q++){const i=Math.round((q+.5)/nt*(s.length-1));const lb=tfmt(s[i][0],span);if(lb===last)continue;last=lb;g+=`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${lb}</text>`}
   const li=s.length-1;
-  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,cur:cur||(v=>fmt(v))};
+  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,cur:cur||(v=>fmt(v)),mode:CUSTOM[sym]?CUSTOM[sym].mode:"pct"};
   return `<div class="selinfo" id="selinfo"><span class="muted">${SELHINT}</span></div>
   <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
 const SELHINT="Clique num cartão acima para mudar o período. Clique e arraste no gráfico (ou clique no início e no fim) para ver a variação de um trecho.";
@@ -598,13 +600,13 @@ const dfmt=ms=>tfmt(ms,CHART?CHART.span:1e12,true);
 function drawSel(){const c=CHART,g=$("#selg"),svg=$("#chartsvg"),info=$("#selinfo");if(!c||!g)return;
   if(SEL.a==null||SEL.b==null||SEL.a===SEL.b){g.innerHTML=SEL.a!=null?`<line x1="${c.X(SEL.a)}" x2="${c.X(SEL.a)}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".6"/><circle cx="${c.X(SEL.a)}" cy="${c.Y(c.s[SEL.a][1])}" r="4.5" fill="var(--ink)"/>`:"";svg.classList.remove("selon");
     if(SEL.a!=null)info.innerHTML=`<span><b>${dfmt(c.s[SEL.a][0])}</b> · ${c.cur(c.s[SEL.a][1])}</span><span class="muted">Agora clique no fim do período.</span>`;return}
-  const a=Math.min(SEL.a,SEL.b),b=Math.max(SEL.a,SEL.b),pa=c.s[a][1],pb=c.s[b][1],ch=(pb/pa-1)*100,up=ch>=0,col=up?"var(--up)":"var(--down)";
+  const a=Math.min(SEL.a,SEL.b),b=Math.max(SEL.a,SEL.b),pa=c.s[a][1],pb=c.s[b][1],ch=c.mode==="pp"?pb-pa:(pb/pa-1)*100,up=ch>=0,col=up?"var(--up)":"var(--down)";
   const seg=c.s.slice(a,b+1).map((p,k)=>(k?"L":"M")+c.X(a+k).toFixed(1)+" "+c.Y(p[1]).toFixed(1)).join("");
   g.innerHTML=`<rect x="${c.X(a)}" y="${c.pt}" width="${c.X(b)-c.X(a)}" height="${c.Hh-c.pt-c.pb}" fill="${col}" opacity=".12"/><path d="${seg}" fill="none" stroke="${col}" stroke-width="2.5"/>
     ${[a,b].map(i=>`<line x1="${c.X(i)}" x2="${c.X(i)}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="${col}" stroke-dasharray="3 3"/><circle cx="${c.X(i)}" cy="${c.Y(c.s[i][1])}" r="4.5" fill="${col}"/>`).join("")}`;
   svg.classList.add("selon");
   const dias=Math.round((c.s[b][0]-c.s[a][0])/864e5),dur=dias>=1?`(${dias} ${dias===1?"dia":"dias"})`:"";
-  info.innerHTML=`<span><b>${dfmt(c.s[a][0])}</b> → <b>${dfmt(c.s[b][0])}</b> <span class="muted">${dur}</span></span><span>${c.cur(pa)} → ${c.cur(pb)}</span><span class="pill ${cls(ch)}" style="font-weight:700">${up?"▲":"▼"} ${pct(ch,2)}</span><button type="button" id="selclr" class="mini">Limpar</button>`;
+  info.innerHTML=`<span><b>${dfmt(c.s[a][0])}</b> → <b>${dfmt(c.s[b][0])}</b> <span class="muted">${dur}</span></span><span>${c.cur(pa)} → ${c.cur(pb)}</span><span class="pill ${cls(ch)}" style="font-weight:700">${up?"▲":"▼"} ${c.mode==="pp"?ppf(ch):pct(ch,2)}</span><button type="button" id="selclr" class="mini">Limpar</button>`;
   $("#selclr").onclick=()=>{SEL={a:null,b:null,drag:false,moved:false};drawSel();$("#selinfo").innerHTML=`<span class="muted">${SELHINT}</span>`}}
 function drawHover(i){const c=CHART,g=$("#hovg");if(!g)return;if(i==null){g.innerHTML="";return}
   const x=c.X(i),y=c.Y(c.s[i][1]),txt=`${dfmt(c.s[i][0])}  ${c.cur(c.s[i][1])}`,w=txt.length*6.6+16,tx=Math.min(Math.max(x-w/2,c.pl),c.W-c.pr-w);
@@ -618,19 +620,24 @@ document.addEventListener("pointerup",e=>{if(!SEL.drag)return;SEL.drag=false;con
   if(!SEL.moved){if(SEL.pend){SEL.b=i}else{SEL.a=i;SEL.b=null}drawSel()}});
 document.addEventListener("pointerleave",()=>drawHover(null));
 let DET=null;
-function perfBtn(k,l,v,on){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":pct(v,1)}</button>`}
+const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
+function perfBtn(k,l,v,on,f){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":(f||(x=>pct(x,1)))(v)}</button>`}
 function showRange(){if(!DET)return;SEL={a:null,b:null,drag:false,moved:false};$("#chartbox").innerHTML=chartSVG(DET.t,DET.cur,DET.k)}
 function openDetail(t,m){
+  if(m==="macro")return openMacro(t);
+  if(m==="idx"&&t==="BRL=X")m="fx";
   let r;if(m==="fx"){const f=fxInfo(t);if(!f||!H[t])return;r={t,n:f[1],p:H[t].p,c:dchg(t),_code:f[2]}}
+  else if(m==="idx"){if(!H[t])return;r={t,n:IDXN[t]||t,p:H[t].p,c:dchg(t)}}
   else{r=(m==="us"?US:BR).find(x=>x.t===t)||(m==="us"?BR:US).find(x=>x.t===t);if(!r)return;m=US.includes(r)?"us":"br"}
-  const h=H[t];const cur=m==="us"?usd:m==="fx"?fxR:v=>"R$ "+fmt(v);
+  const h=H[t];const cur=m==="us"?usd:m==="fx"?fxR:m==="idx"?(v=>fmt(v,0)+" pts"):v=>"R$ "+fmt(v);
   const pv={d1:r.c,d5:retOver(t,7),m1:retOver(t,30),m6:retOver(t,182),ytd:ytd(t),y1:retOver(t,365),max:HX[t]?maxChange(t):undefined};
   const kv=[];
   if(h){kv.push(["Mínima 52 semanas",cur(h.lo)],["Máxima 52 semanas",cur(h.hi)],["Volatilidade anual",fp(vol(t))],["Maior queda no ano (drawdown)",fp(mdd(t))])}
   if(m==="fx"){kv.push(["Moeda",esc(r.n)+" ("+r._code+")"],["1 "+r._code+" em reais",fxR(r.p)],["R$ 1 em "+r._code,(1/r.p).toLocaleString("pt-BR",{maximumFractionDigits:r.p<1?2:4})])}
+  else if(m==="idx"){kv.push(["Índice",esc(r.n)],["Pontos",fmt(r.p,0)])}
   else if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
-  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":t)}</span><span class="muted">${esc(r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
+  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":m==="idx"?r.n:t)}</span><span class="muted">${esc(m==="idx"?(t==="^BVSP"?"B3 · Brasil":"Bolsa dos EUA"):r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
   <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k])).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,"y1")}</div></div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
@@ -639,6 +646,29 @@ function openDetail(t,m){
   const hadHX=HX[t]!==undefined;loadHX(t).then(()=>{if(!DET||DET.t!==t)return;const el=$("#perf [data-k=max]");if(el)el.outerHTML=perfBtn("max","Desde o início",maxChange(t),DET.k==="max");if(!hadHX&&DET.k!=="y1")showRange()});
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
+// ---------- Pop-up dos indicadores (Selic, CDI, IPCA...) ----------
+let MH=null;const CUSTOM={};
+const MACROS={selic:["Selic","Taxa básica de juros (meta do Copom)","pp"],cdi:["CDI","Taxa do CDI ao ano","pp"],ipca:["IPCA 12 meses","Inflação acumulada em 12 meses","pp"],juro:["Juro real","CDI descontada a inflação de 12 meses","pp"],poup:["Poupança","Rendimento da poupança ao ano","pp"],ptax:["Dólar PTAX","Cotação oficial do Banco Central","pct"]};
+function mhPts(o){if(!o||!o.c||o.c.length<2)return null;let d=o.d0;const out=[[d*864e5,o.c[0]]];o.dd.forEach((x,i)=>{d+=x;out.push([d*864e5,o.c[i+1]])});return out}
+function buildMacro(){if(!MH)return;const g=k=>mhPts(MH[k]);
+  const set=(k,pts)=>{if(pts&&pts.length>1)CUSTOM["@"+k]={pts,mode:MACROS[k][2]}};
+  set("selic",g("selic"));set("cdi",g("cdi"));set("ipca",g("ipca12"));set("ptax",g("ptax"));
+  const pp=g("poup");set("poup",pp&&pp.map(([t,v])=>[t,(Math.pow(1+v/100,12)-1)*100]));
+  const c=g("cdi"),ip=g("ipca12");if(c&&ip){let j=0;const out=[];ip.forEach(([t,v])=>{while(j<c.length-1&&c[j+1][0]<=t)j++;if(c[j][0]<=t)out.push([t,((1+c[j][1]/100)/(1+v/100)-1)*100])});set("juro",out)}}
+function loadMH(){if(MH)return Promise.resolve(MH);return fetch("macrohist.json",{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{if(j){MH=j;buildMacro()}return MH})}
+function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
+  const show=()=>{const cs=CUSTOM[id];const mode=M[2];const vf=mode==="pp"?(v=>fmt(v,2)+"%"):(v=>"R$ "+fmt(v,4));
+    const rg=[["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["y5","5 anos"],["max",cs&&cs.pts[0][0]<Date.now()-3700*864e5?"10 anos":"Tudo"]];
+    const chg=k=>{const p=cs&&pointsFor(id,k);if(!p)return null;const a=p[0][1],b=p[p.length-1][1];return mode==="pp"?b-a:(b/a-1)*100};
+    const f=mode==="pp"?ppf:(x=>pct(x,1));const last=cs?cs.pts[cs.pts.length-1]:null;
+    $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${M[0]}</span><span class="muted">${M[1]}</span><span class="px">${last?vf(last[1]):"–"}</span><button id="dClose" style="margin-left:auto">Fechar</button></div>
+    ${cs?`<div class="perf" id="perf">${rg.map(([k,l])=>perfBtn(k,l,chg(k),k==="y5",f)).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(id,vf,"y5")}</div>`:`<p class="muted" style="padding:40px 0;text-align:center">O histórico deste indicador chega na próxima atualização automática.</p>`}</div>
+    <div class="panel"><h3>Sobre</h3><div class="kv"><div>Valor atual</div><div>${last?vf(last[1]):"–"}</div>${last?`<div>Data</div><div>${new Date(last[0]).toLocaleDateString("pt-BR",{timeZone:"UTC"})}</div>`:""}<div>Fonte</div><div>Banco Central (SGS)</div></div>
+    <p class="muted small" style="margin-bottom:0">${mode==="pp"?"As variações dos cartões estão em pontos percentuais (p.p.): diferença entre a taxa no fim e no começo do período.":"Variação percentual da cotação no período."}</p></div></div>`;
+    $("#dClose").onclick=closeDetail;DET={t:id,cur:vf,k:"y5"};
+    if(cs)$("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};};
+  $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;
+  if(MH)show();else{$("#detail").innerHTML=`<div class="panel"><p class="muted">Carregando…</p></div>`;loadMH().then(()=>{if(!$("#modal").hidden)show()})}}
 function closeDetail(){CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
 $("#modal").addEventListener("click",e=>{if(e.target.isConnected&&!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
@@ -731,7 +761,7 @@ segs("#ctabs",v=>{["top","rf","cmp","jc","eq","meta"].forEach(x=>$("#c-"+x).hidd
 $("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;
 // ---------- app de desktop: busca dados novos do site publicado ----------
 const SITE="https://davicosban.github.io/Investimentos/";
-const DFILES=["br.json","us.json","hist.json","macro.json","asof.json"];
+const DFILES=["br.json","us.json","hist.json","macro.json","asof.json","macrohist.json"];
 let DESK=null,DDIR=null;
 const dbar=(msg,btn,fn)=>{$("#dbar").hidden=false;$("#dmsg").textContent=msg;const b=$("#dbtn");b.hidden=!btn;if(btn){b.textContent=btn;b.onclick=fn}};
 function drawIcon(){const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d");x.fillStyle="#0F5C6E";x.beginPath();x.roundRect(0,0,256,256,52);x.fill();
@@ -764,7 +794,7 @@ async function getData(){
   DESK.app.dock.setIcon(drawIcon()).catch(()=>{});
   let st="prompt";try{st=await DESK.permissions.state("full-access")}catch(e){}
   if(st!=="granted"){dbar(st==="denied"?"A busca de dados novos está bloqueada. Mostrando a versão que veio com o app.":"Para buscar os dados mais recentes, o app precisa da sua permissão.",st==="denied"?"Abrir permissões":"Permitir e atualizar",st==="denied"?()=>DESK.permissions.manage().catch(()=>{}):async()=>{try{const r=await DESK.permissions.request(["full-access"]);if(r["full-access"]==="granted")refreshDesktop();else dbar("Sem permissão. Mostrando a versão que veio com o app.",null)}catch(e){dbar("Não consegui pedir a permissão agora.",null)}});return bundled()}
-  try{const c=await readCache();if(c){if(c["macro.json"])Object.assign(MACRO,c["macro.json"]);if(c["asof.json"])ASOF=c["asof.json"].asof;$("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;calcTop();calcRF();calcCmp();calcEQ();renderDsRF();
+  try{const c=await readCache();if(c){if(c["macro.json"])Object.assign(MACRO,c["macro.json"]);if(c["macrohist.json"]){MH=c["macrohist.json"];buildMacro()}if(c["asof.json"])ASOF=c["asof.json"].asof;$("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;calcTop();calcRF();calcCmp();calcEQ();renderDsRF();
       const [d,h]=ASOF.split(" ");const [dd,mm,yy]=d.split("/");const age=(Date.now()-new Date(`${yy}-${mm}-${dd}T${h||"00:00"}:00-03:00`))/36e5;
       dbar(`App de desktop · dados de ${ASOF}`,"Atualizar agora",refreshDesktop);
       setTimeout(checkRemote,800);setInterval(checkRemote,30*60*1000);

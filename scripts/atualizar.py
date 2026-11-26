@@ -79,11 +79,13 @@ def chart(sym):
     """Um pedido só por ativo: histórico diário completo. Guarda 1 ano em hist.json e o resto (semanal) em LONG."""
     j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + "?range=max&interval=1d")
     x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
-    allp = [(round(ts / 86400), float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
+    off = m.get("gmtoffset") or 0
+    allp = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
     if m.get("dataGranularity", "1d") != "1d" or len(allp) < 2:
         j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + "?range=1y&interval=1d")
         x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
-        pts = [(round(ts / 86400), float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
+        off = m.get("gmtoffset") or 0
+        pts = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
     else:
         pts = [p for p in allp if p[0] >= allp[-1][0] - 366]
         wk = {}
@@ -122,6 +124,28 @@ FX = ["USDBRL=X", "EURBRL=X", "GBPBRL=X", "ARSBRL=X", "CHFBRL=X", "JPYBRL=X", "C
 # ---------- Banco Central ----------
 def bcb(code, n):
     return jget(f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados/ultimos/{n}?formato=json")
+
+def bcbrange(code, years):
+    hoje = datetime.date.today(); ini = hoje - datetime.timedelta(days=int(years * 365.25) - 2)
+    return jget(f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={ini:%d/%m/%Y}&dataFinal={hoje:%d/%m/%Y}")
+
+def macrohist():
+    out = {}
+    for key, code, yrs in (("selic", 432, 9.9), ("cdi", 4389, 9.9), ("ptax", 1, 9.9), ("ipca12", 13522, 26), ("poup", 195, 9.9)):
+        rows = bcbrange(code, yrs); pts = []
+        for r in rows:
+            try:
+                d, mth, y = r["data"].split("/"); day = (datetime.date(int(y), int(mth), int(d)) - datetime.date(1970, 1, 1)).days
+                pts.append((day, float(r["valor"])))
+            except (ValueError, KeyError): pass
+        # séries diárias que quase não mudam (Selic, CDI): guarda só quando muda + 1 ponto por semana
+        if key in ("selic", "cdi"):
+            keep = [p for i, p in enumerate(pts) if i == 0 or i == len(pts) - 1 or p[1] != pts[i - 1][1] or (p[0] - pts[i - 1][0]) >= 7 or p[0] % 7 == 0]
+            pts = keep
+        if len(pts) > 1:
+            out[key] = {"d0": pts[0][0], "dd": [pts[i][0] - pts[i - 1][0] for i in range(1, len(pts))], "c": [v for _, v in pts]}
+        time.sleep(0.5)
+    return out
 
 def main():
     old_br, old_us, old_h = load("br.json", []), load("us.json", []), load("hist.json", {})
@@ -223,6 +247,10 @@ def main():
         log.append(f"BCB: Selic {selic}, CDI {cdi['valor']}, IPCA12 {i12['valor']}")
     except Exception as e:
         log.append(f"BCB FALHOU: {e}")
+    try:
+        save("macrohist.json", macrohist()); log.append("BCB histórico: ok")
+    except Exception as e:
+        log.append(f"BCB histórico FALHOU: {e}")
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
     save("asof.json", {"asof": f"{now:%d/%m/%Y %H:%M}"})
     s = re.sub(r'(let|const) ASOF="[^"]*";', lambda m: f'{m.group(1)} ASOF="{now:%d/%m/%Y %H:%M}";', s, count=1)
