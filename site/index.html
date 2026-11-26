@@ -16,6 +16,7 @@
   /* faixa da barra de título fica livre (só para arrastar); o menu desce para baixo dos botões do Windows */
   html body header.top{-webkit-app-region:drag;app-region:drag;top:0;padding-top:calc(env(titlebar-area-height,33px) + 6px)}
   html body::before{height:env(titlebar-area-height,33px)}
+  html body .modal{padding-top:calc(env(titlebar-area-height,33px) + 12px)}
   header.top a,header.top button,header.top input,header.top select,nav.tabs,.dbar{-webkit-app-region:no-drag;app-region:no-drag}
 }
 </style>
@@ -526,7 +527,7 @@ function openDetail(t,m){
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
 function closeDetail(){$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
-$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeDetail()});
+$("#modal").addEventListener("click",e=>{if(!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
 document.addEventListener("click",e=>{if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
 function segs(id,cb){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)})}
