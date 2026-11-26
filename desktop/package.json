@@ -1,0 +1,33 @@
+{
+  "name": "painel-investimentos",
+  "productName": "Painel Investimentos",
+  "version": "1.0.0",
+  "description": "Painel Investimentos: bolsa BR e EUA e calculadora de renda fixa",
+  "author": "Davi",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "io.github.davicosban.painelinvestimentos",
+    "productName": "Painel Investimentos",
+    "files": ["main.js", "offline.html", "build/icon.png"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Painel Investimentos",
+      "artifactName": "Painel-Investimentos-Setup.${ext}"
+    }
+  }
+}

@@ -9,3 +9,8 @@ App pessoal para acompanhar a bolsa brasileira e americana e calcular rentabilid
 Para atualizar na hora: aba **Actions** → *Atualizar dados e publicar* → **Run workflow**.
 
 Não é recomendação de investimento. Taxas de bancos na calculadora são exemplos; as do Tesouro Direto são de 26/11/2026.
+
+## App para Windows
+
+`desktop/` é um app Electron que abre o site numa janela própria, sem a barra de título do Windows.
+O instalador é gerado pelo workflow *Gerar app para Windows* e fica em **Releases** (`Painel-Investimentos-Setup.exe`).
