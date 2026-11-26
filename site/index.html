@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Painel Investimentos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap">
+<style>
+/* Layout: top bar with tabs, one working view at a time; tables scroll inside their own box */
+:root{
+  --bg:#F3F5F2; --surface:#FFFFFF; --surface2:#E9EDE8; --line:#D6DCD4; --ink:#16211C; --muted:#5D6B63;
+  --accent:#0F5C6E; --accent-ink:#FFFFFF; --up:#12804A; --down:#C33129; --upbg:#DFF2E6; --downbg:#F8E1DF; --warn:#9A6A00; --warnbg:#FFF4D6;
+  --f-display:"Sora",system-ui,sans-serif; --f-body:"IBM Plex Sans",system-ui,sans-serif; --f-num:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#161E1B; --surface2:#1E2925; --line:#2B3833; --ink:#E5ECE8; --muted:#94A39B;
+  --accent:#5DB7C9; --accent-ink:#0B1A1E; --up:#3DC07A; --down:#F0665C; --upbg:#173526; --downbg:#3B1D1A; --warn:#E5B54A; --warnbg:#302510; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#161E1B; --surface2:#1E2925; --line:#2B3833; --ink:#E5ECE8; --muted:#94A39B;
+  --accent:#5DB7C9; --accent-ink:#0B1A1E; --up:#3DC07A; --down:#F0665C; --upbg:#173526; --downbg:#3B1D1A; --warn:#E5B54A; --warnbg:#302510; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.topin{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px 0;display:flex;flex-direction:column;gap:8px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-size:20px;margin:0;letter-spacing:-.01em}
+.brand .asof{color:var(--muted);font-size:12px}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs a{padding:8px 14px;color:var(--muted);text-decoration:none;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2{font-family:var(--f-display);font-size:18px;margin:24px 0 10px;text-wrap:balance}
+h3{font-family:var(--f-display);font-size:15px;margin:0 0 8px}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.note{background:var(--warnbg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:14px}
+.note b{color:var(--warn)}
+.idx .lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.idx .val{font-family:var(--f-num);font-size:22px;font-weight:600;margin-top:2px}
+.idx .chg{font-family:var(--f-num);font-size:13px;display:flex;gap:12px}
+.spark{width:100%;height:46px;display:block;margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px}
+.chip b{font-family:var(--f-num);font-weight:600;margin-left:4px}
+.pill{display:inline-block;font-family:var(--f-num);font-size:12.5px;font-weight:500;padding:2px 7px;border-radius:5px}
+.pill.up{background:var(--upbg)} .pill.down{background:var(--downbg)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+input,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0}
+input[type=search]{flex:1 1 220px}
+button{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:6px 12px;background:var(--surface)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.tbox{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--surface2);font-weight:600;font-size:12px;cursor:pointer;user-select:none}
+th.l,td.l{text-align:left}
+td.t{font-family:var(--f-num);font-weight:600;text-align:left}
+td.nm{text-align:left;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface2)}
+td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+th .arr{color:var(--accent)}
+.more{display:flex;justify-content:center;margin-top:10px;gap:10px;align-items:center}
+/* heatmap */
+.sector{margin-bottom:14px}
+.sector h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:4px}
+.tile{border:0;border-radius:6px;padding:8px 6px;text-align:left;color:#fff;font-family:var(--f-num);min-height:56px;display:flex;flex-direction:column;justify-content:space-between}
+.tile .tk{font-weight:600;font-size:13px}
+.tile .pc{font-size:12px;opacity:.95}
+.legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.legend span.sw{width:22px;height:12px;border-radius:3px;display:inline-block}
+/* detail */
+.detail{display:grid;gap:12px;grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+@media (max-width:860px){.detail{grid-template-columns:1fr}}
+.dhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px}
+.dhead .tk{font-family:var(--f-display);font-size:24px;font-weight:700}
+.dhead .px{font-family:var(--f-num);font-size:24px;font-weight:600}
+.chart{width:100%;height:260px;display:block}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.kv div:nth-child(odd){color:var(--muted)}
+.kv div:nth-child(even){font-family:var(--f-num);text-align:right}
+.perf{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:6px;margin-top:10px}
+.perf div{border-radius:7px;padding:6px 8px;text-align:center;font-family:var(--f-num);font-size:13px}
+.perf div small{display:block;font-family:var(--f-body);font-size:11px;color:var(--muted)}
+.perf .up{background:var(--upbg)} .perf .down{background:var(--downbg)} .perf .na{background:var(--surface2);color:var(--muted)}
+/* calc */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.res div{background:var(--surface2);border-radius:8px;padding:10px}
+.res small{display:block;color:var(--muted);font-size:11.5px}
+.res b{font-family:var(--f-num);font-size:16px}
+#topCards b{font-family:var(--f-body);font-size:14.5px}
+.subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.subtabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);margin-left:4px;font-family:var(--f-body)}
+.tag.ex{background:var(--warnbg);color:var(--warn)}
+.tag.real{background:var(--upbg);color:var(--up)}
+svg text{fill:var(--muted);font-family:var(--f-num);font-size:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="topin">
+  <div class="brand"><h1>Painel Investimentos</h1><span class="asof" id="asof">Carregando dados…</span></div>
+  <nav class="tabs" id="tabs">
+    <a href="#mercado">Visão geral</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#calc">Calculadora</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<section id="v-mercado">
+  <div class="toolbar" style="justify-content:space-between;margin-top:20px"><h2 style="margin:0">Destaques</h2>
+    <div class="seg" id="dsPer"><button aria-pressed="false" data-v="30">1 mês</button><button aria-pressed="false" data-v="182">6 meses</button><button aria-pressed="true" data-v="365">12 meses</button></div></div>
+  <div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="panel"><h3>Ações que mais subiram: Brasil</h3><p class="muted small" id="dsBRi"></p><div id="dsBR"></div></div>
+    <div class="panel"><h3>Ações que mais subiram: EUA</h3><p class="muted small" id="dsUSi"></p><div id="dsUS"></div></div>
+    <div class="panel"><h3>Renda fixa: maior rendimento com segurança</h3><p class="muted small">R$ 10 mil por 24 meses, líquido de IR. Só Tesouro ou FGC em banco grande.</p><div id="dsRF"></div><p class="small" style="margin:8px 0 0"><a href="#calc" style="color:var(--accent)">Ver ranking completo na Calculadora</a></p></div>
+  </div>
+  <p class="muted small">Desempenho passado não garante resultado futuro. Ações com histórico disponível: as 100 mais negociadas da B3 e as ~120 maiores dos EUA.</p>
+  <h2>Índices e câmbio</h2>
+  <div class="grid g4" id="idxs"></div>
+  <h2>Juros e inflação no Brasil</h2>
+  <div class="chips" id="macro"></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="panel"><h3>Maiores altas e baixas do dia: Brasil</h3><p class="muted small">Entre as 100 ações mais negociadas da B3.</p><div id="movBR"></div></div>
+    <div class="panel"><h3>Maiores altas e baixas do dia: EUA</h3><p class="muted small">Entre as 200 maiores empresas por valor de mercado.</p><div id="movUS"></div></div>
+  </div>
+  <div class="note"><b>Sobre os dados.</b> Esta versão traz uma fotografia do mercado (veja a data no topo), não cotação em tempo real. Fontes: Fundamentus e brapi (B3), Nasdaq (EUA), Yahoo Finance (histórico de 1 ano), Banco Central (Selic, CDI, IPCA, dólar PTAX) e Tesouro Direto (taxas dos títulos). Nada aqui é recomendação de investimento.</div>
+</section>
+
+<section id="v-b3" hidden>
+  <h2>Bolsa Brasil <span class="muted small" id="b3count"></span></h2>
+  <div class="toolbar">
+    <input type="search" id="b3q" placeholder="Buscar ticker ou empresa (ex.: PETR4, Itaú)">
+    <select id="b3sec"><option value="">Todos os setores</option></select>
+    <select id="b3liq"><option value="0">Qualquer liquidez</option><option value="1000000" selected>Liquidez acima de R$ 1 mi/dia</option><option value="10000000">Acima de R$ 10 mi/dia</option></select>
+  </div>
+  <div class="tbox"><table id="b3t"></table></div>
+  <div class="more"><span class="muted small" id="b3shown"></span><button id="b3more">Mostrar mais</button></div>
+  <p class="muted small">Indicadores fundamentalistas do Fundamentus, calculados sobre os últimos balanços. Liquidez é o volume médio diário dos últimos 2 meses. Clique numa linha para ver a ação.</p>
+</section>
+
+<section id="v-eua" hidden>
+  <h2>Bolsa EUA <span class="muted small" id="euacount"></span></h2>
+  <div class="toolbar">
+    <input type="search" id="euaq" placeholder="Buscar ticker ou empresa (ex.: AAPL, Nvidia)">
+    <select id="euasec"><option value="">Todos os setores</option></select>
+  </div>
+  <div class="tbox"><table id="euat"></table></div>
+  <div class="more"><span class="muted small" id="euashown"></span><button id="euamore">Mostrar mais</button></div>
+  <p class="muted small">Empresas listadas na NYSE e Nasdaq com valor de mercado acima de US$ 2 bilhões (fonte: Nasdaq). Indicadores como P/L e dividendos para os EUA ainda não estão nesta versão.</p>
+</section>
+
+<section id="v-acoes" hidden>
+  <h2>Ação a ação</h2>
+  <div class="toolbar">
+    <div class="seg" id="hmMkt"><button aria-pressed="true" data-v="br">Brasil</button><button aria-pressed="false" data-v="us">EUA</button></div>
+    <div class="seg" id="hmPer"><button aria-pressed="true" data-v="d">Dia</button><button aria-pressed="false" data-v="1m">1 mês</button><button aria-pressed="false" data-v="6m">6 meses</button><button aria-pressed="false" data-v="12m">12 meses</button></div>
+    <input type="search" id="hmq" placeholder="Abrir ação: digite o ticker e Enter" list="allticks">
+    <datalist id="allticks"></datalist>
+  </div>
+  <div id="detail"></div>
+  <div class="toolbar" style="justify-content:space-between">
+    <span class="muted small" id="hmInfo"></span>
+    <span class="legend"><span class="sw" style="background:#B3261E"></span>queda forte <span class="sw" style="background:#7A6E6A"></span>estável <span class="sw" style="background:#0E7A43"></span>alta forte</span>
+  </div>
+  <div id="heat"></div>
+</section>
+
+<section id="v-calc" hidden>
+  <h2>Calculadora de rentabilidade</h2>
+  <div class="chips" id="calcMacro"></div>
+  <div class="subtabs" id="ctabs">
+    <button data-v="top" aria-pressed="true">Melhores e seguros</button>
+    <button data-v="rf" aria-pressed="false">Renda fixa</button>
+    <button data-v="cmp" aria-pressed="false">Comparar produtos</button>
+    <button data-v="jc" aria-pressed="false">Juros compostos</button>
+    <button data-v="eq" aria-pressed="false">Isento x tributado</button>
+    <button data-v="meta" aria-pressed="false">Meta de patrimônio</button>
+  </div>
+
+  <div id="c-top" class="panel">
+    <div class="form">
+      <label>Valor (R$)<input id="topVal" type="number" value="10000" step="100"></label>
+      <label>Prazo (meses)<input id="topPrazo" type="number" value="24" min="1"></label>
+      <label>Segurança mínima<select id="topSeg"><option value="3">Máxima: só Tesouro Direto</option><option value="2" selected>Alta: Tesouro ou FGC em banco grande</option><option value="1">Boa: inclui FGC em banco médio/digital</option></select></label>
+      <label>Liquidez<select id="topLiq"><option value="">Qualquer</option><option value="d">Preciso resgatar a qualquer momento</option></select></label>
+    </div>
+    <div class="res" id="topCards"></div>
+    <h3 style="margin-top:16px">Ranking pelo rendimento líquido</h3>
+    <div class="tbox"><table id="topT"></table></div>
+    <p class="small muted" style="margin-top:8px"><b>Como medimos a segurança.</b> Máxima: Tesouro Direto, garantido pelo governo federal. Alta: CDB, LCI, LCA e poupança de bancos grandes, com garantia do FGC até R$ 250 mil por CPF por instituição (teto de R$ 1 milhão a cada 4 anos). Boa: mesma garantia do FGC, em bancos médios ou digitais, que costumam pagar mais justamente por terem mais risco. Prefixados e IPCA+ do Tesouro oscilam de preço se vendidos antes do vencimento.</p>
+    <p class="small" id="topFgc"></p>
+  </div>
+
+  <div id="c-rf" class="panel" hidden>
+    <div class="form">
+      <label style="grid-column:1/-1">Produto
+        <select id="rfProd"></select></label>
+      <label>Tipo<select id="rfTipo"><option value="pos">Pós-fixado (% do CDI)</option><option value="selic">Selic + taxa</option><option value="pre">Prefixado (% a.a.)</option><option value="ipca">IPCA + taxa</option><option value="poup">Poupança</option></select></label>
+      <label>Taxa <span id="rfTaxaLbl">(% do CDI)</span><input id="rfTaxa" type="number" step="0.01" value="100"></label>
+      <label>Imposto<select id="rfIR"><option value="ir">IR regressivo (CDB, Tesouro, debênture)</option><option value="isento">Isento (LCI, LCA, CRI, CRA, poupança)</option></select></label>
+      <label>Valor inicial (R$)<input id="rfVal" type="number" step="100" value="10000"></label>
+      <label>Aporte mensal (R$)<input id="rfAp" type="number" step="100" value="0"></label>
+      <label>Prazo (meses)<input id="rfPrazo" type="number" step="1" min="1" value="24"></label>
+      <label>Taxa de custódia (% a.a.)<input id="rfCust" type="number" step="0.01" value="0"></label>
+    </div>
+    <p class="small muted" id="rfInfo"></p>
+    <div class="res" id="rfRes"></div>
+    <svg class="chart" id="rfChart" viewBox="0 0 800 240" preserveAspectRatio="none" style="height:240px;margin-top:12px"></svg>
+    <details style="margin-top:10px"><summary class="small">Adicionar meu próprio produto</summary>
+      <div class="form" style="margin-top:8px">
+        <label>Banco/emissor<input id="npBanco" placeholder="Ex.: Banco X"></label>
+        <label>Nome<input id="npNome" placeholder="Ex.: CDB 2 anos"></label>
+        <label>Tipo<select id="npTipo"><option value="pos">% do CDI</option><option value="pre">Prefixado</option><option value="ipca">IPCA +</option><option value="selic">Selic +</option></select></label>
+        <label>Taxa<input id="npTaxa" type="number" step="0.01"></label>
+        <label>Imposto<select id="npIR"><option value="ir">IR regressivo</option><option value="isento">Isento</option></select></label>
+        <label>Prazo (meses)<input id="npPrazo" type="number" value="12"></label>
+        <label>Liquidez<input id="npLiq" placeholder="Ex.: diária, no vencimento"></label>
+        <label style="justify-content:flex-end"><button class="primary" id="npAdd" type="button">Salvar produto</button></label>
+      </div>
+      <p class="small muted">Os produtos que você adiciona ficam salvos só neste navegador.</p>
+    </details>
+  </div>
+
+  <div id="c-cmp" class="panel" hidden>
+    <div class="form">
+      <label>Valor (R$)<input id="cmpVal" type="number" value="10000" step="100"></label>
+      <label>Prazo (meses)<input id="cmpPrazo" type="number" value="24" min="1"></label>
+      <label>Filtro<select id="cmpF"><option value="">Todos</option><option value="Tesouro">Tesouro Direto</option><option value="CDB">CDB</option><option value="LCI/LCA">LCI e LCA</option><option value="diaria">Só liquidez diária</option></select></label>
+    </div>
+    <p class="small muted">Cada produto é simulado pelo mesmo prazo e valor para comparar o líquido (depois de IR, IOF e custódia). Produtos com vencimento menor que o prazo são reaplicados na mesma taxa, uma simplificação.</p>
+    <div class="tbox"><table id="cmpT"></table></div>
+  </div>
+
+  <div id="c-jc" class="panel" hidden>
+    <div class="form">
+      <label>Valor inicial (R$)<input id="jcVal" type="number" value="5000"></label>
+      <label>Aporte mensal (R$)<input id="jcAp" type="number" value="1000"></label>
+      <label>Taxa de juros (%)<input id="jcTx" type="number" step="0.01" value="12"></label>
+      <label>A taxa é<select id="jcPer"><option value="a">ao ano</option><option value="m">ao mês</option></select></label>
+      <label>Período (anos)<input id="jcAnos" type="number" value="10"></label>
+      <label>Inflação esperada (% a.a.)<input id="jcInf" type="number" step="0.1" value="4.6"></label>
+    </div>
+    <div class="res" id="jcRes"></div>
+    <svg class="chart" id="jcChart" viewBox="0 0 800 240" preserveAspectRatio="none" style="height:240px;margin-top:12px"></svg>
+    <p class="small muted">Sem impostos. Use a aba Renda fixa para ver o efeito do IR.</p>
+  </div>
+
+  <div id="c-eq" class="panel" hidden>
+    <div class="form">
+      <label>Prazo (meses)<input id="eqPrazo" type="number" value="12"></label>
+      <label>LCI/LCA paga (% do CDI)<input id="eqIs" type="number" step="0.5" value="92"></label>
+      <label>CDB paga (% do CDI)<input id="eqTr" type="number" step="0.5" value="110"></label>
+    </div>
+    <div class="res" id="eqRes"></div>
+    <p class="small muted">Alíquota de IR pelo prazo: até 6 meses 22,5%; até 12 meses 20%; até 24 meses 17,5%; acima disso 15%.</p>
+  </div>
+
+  <div id="c-meta" class="panel" hidden>
+    <div class="form">
+      <label>Quero juntar (R$)<input id="mtAlvo" type="number" value="1000000"></label>
+      <label>Já tenho (R$)<input id="mtIni" type="number" value="20000"></label>
+      <label>Em quantos anos<input id="mtAnos" type="number" value="20"></label>
+      <label>Rentabilidade líquida (% a.a.)<input id="mtTx" type="number" step="0.1" value="10"></label>
+    </div>
+    <div class="res" id="mtRes"></div>
+  </div>
+
+  <div class="note"><b>Premissas.</b> CDI e Selic usam a taxa atual do Banco Central mantida constante pelo prazo; IPCA usa a inflação dos últimos 12 meses (você pode mudar abaixo). Cálculo em meses de 30 dias. IR regressivo sobre o rendimento de cada aporte pela sua idade; IOF regressivo só nos primeiros 30 dias.
+    <div class="form" style="margin-top:8px">
+      <label>CDI (% a.a.)<input id="pCDI" type="number" step="0.01"></label>
+      <label>IPCA projetado (% a.a.)<input id="pIPCA" type="number" step="0.01"></label>
+    </div>
+    <p class="small" style="margin:8px 0 0">Taxas do Tesouro Direto são reais, da data no topo. <b>Taxas de bancos são exemplos típicos do mercado</b>, não ofertas vigentes: confira no app do banco antes de investir, ou cadastre a oferta real em “Adicionar meu próprio produto”.</p>
+  </div>
+</section>
+</main>
+
+<script>
+const MACRO={selic:13.75,selicData:"meta vigente, BCB",cdi:13.65,cdiData:"25/11/2026",ipca12:4.63,ipcaData:"12 meses até out/2026",ptax:5.8825,ptaxData:"25/11/2026",poupMes:0.6721,
+ ipcaM:[["11/2025",0.18],["12/2025",0.33],["01/2026",0.33],["02/2026",0.7],["03/2026",0.88],["04/2026",0.67],["05/2026",0.58],["06/2026",0.16],["07/2026",0.07],["08/2026",-0.32],["09/2026",0.82],["10/2026",0.14]]};
+const ASOF="26/11/2026";
+// Tesouro: taxas reais do site do Tesouro Direto em 26/11/2026. Bancos: exemplos ilustrativos.
+const PRODUTOS=[
+ {g:3,b:"Tesouro Direto",n:"Tesouro Selic 2031",t:"selic",x:0.1115,ir:"ir",m:52,liq:"Diária (D+0)",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro Reserva 2036",t:"selic",x:0,ir:"ir",m:110,liq:"Diária 24/7 (só Banco do Brasil)",c:0,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro Prefixado 2029",t:"pre",x:14.53,ir:"ir",m:37,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro Prefixado 2032",t:"pre",x:14.92,ir:"ir",m:73,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro Prefixado c/ Juros Semestrais 2037",t:"pre",x:14.91,ir:"ir",m:121,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ 2032",t:"ipca",x:7.72,ir:"ir",m:69,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ 2040",t:"ipca",x:7.41,ir:"ir",m:165,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ 2050",t:"ipca",x:7.39,ir:"ir",m:285,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ c/ Juros Semestrais 2037",t:"ipca",x:7.60,ir:"ir",m:126,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro RendA+ 2030",t:"ipca",x:7.50,ir:"ir",m:277,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:3,b:"Tesouro Direto",n:"Tesouro Educa+ 2030",t:"ipca",x:7.68,ir:"ir",m:97,liq:"Diária, a preço de mercado",c:0.2,real:1},
+ {g:1,b:"Nubank",n:"CDB liquidez diária",t:"pos",x:100,ir:"ir",m:24,liq:"Diária"},
+ {g:1,b:"Inter",n:"CDB liquidez diária",t:"pos",x:100,ir:"ir",m:24,liq:"Diária"},
+ {g:1,b:"PicPay",n:"CDB liquidez diária",t:"pos",x:102,ir:"ir",m:24,liq:"Diária"},
+ {g:2,b:"Itaú",n:"CDB DI",t:"pos",x:95,ir:"ir",m:24,liq:"Diária"},
+ {g:2,b:"Bradesco",n:"CDB Fácil",t:"pos",x:90,ir:"ir",m:24,liq:"Diária"},
+ {g:2,b:"Banco do Brasil",n:"CDB DI",t:"pos",x:92,ir:"ir",m:24,liq:"Diária"},
+ {g:2,b:"Caixa",n:"CDB pós",t:"pos",x:95,ir:"ir",m:24,liq:"Diária"},
+ {g:2,b:"Santander",n:"CDB DI",t:"pos",x:95,ir:"ir",m:24,liq:"Diária"},
+ {g:2,b:"BTG Pactual",n:"CDB 2 anos",t:"pos",x:105,ir:"ir",m:24,liq:"No vencimento"},
+ {g:1,b:"C6 Bank",n:"CDB 2 anos",t:"pos",x:108,ir:"ir",m:24,liq:"No vencimento"},
+ {g:1,b:"Banco XP",n:"CDB 3 anos",t:"pos",x:110,ir:"ir",m:36,liq:"No vencimento"},
+ {g:1,b:"Sofisa Direto",n:"CDB 1 ano",t:"pos",x:110,ir:"ir",m:12,liq:"No vencimento"},
+ {g:1,b:"Banco Pine",n:"CDB prefixado 3 anos",t:"pre",x:15.2,ir:"ir",m:36,liq:"No vencimento"},
+ {g:1,b:"BMG",n:"CDB IPCA+ 5 anos",t:"ipca",x:7.8,ir:"ir",m:60,liq:"No vencimento"},
+ {g:1,b:"Inter",n:"LCI 1 ano",t:"pos",x:90,ir:"isento",m:12,liq:"No vencimento (carência mín. 9 meses)"},
+ {g:2,b:"Caixa",n:"LCI 1 ano",t:"pos",x:89,ir:"isento",m:12,liq:"No vencimento"},
+ {g:1,b:"Daycoval",n:"LCI 1 ano",t:"pos",x:92,ir:"isento",m:12,liq:"No vencimento"},
+ {g:2,b:"BTG Pactual",n:"LCA 1 ano",t:"pos",x:94,ir:"isento",m:12,liq:"No vencimento"},
+ {g:2,b:"Itaú",n:"LCA",t:"pos",x:88,ir:"isento",m:12,liq:"No vencimento"},
+ {g:2,b:"Banco do Brasil",n:"LCA DI",t:"pos",x:90,ir:"isento",m:12,liq:"No vencimento"},
+ {g:2,b:"Qualquer banco",n:"Poupança",t:"poup",x:0,ir:"isento",m:12,liq:"Diária (rende no aniversário)"}
+];
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=(v,d=2)=>v==null||!isFinite(v)?"–":v.toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const brl=v=>v==null||!isFinite(v)?"–":v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const usd=v=>v==null?"–":"US$ "+fmt(v);
+const pct=(v,d=2)=>v==null||!isFinite(v)?"–":(v>0?"+":"")+fmt(v,d)+"%";
+const cls=v=>v==null?"":v>0?"up":v<0?"down":"";
+const pill=v=>`<span class="pill ${cls(v)}">${pct(v)}</span>`;
+const big=v=>{if(v==null)return"–";const a=Math.abs(v);return a>=1e12?fmt(v/1e12,2)+" tri":a>=1e9?fmt(v/1e9,1)+" bi":a>=1e6?fmt(v/1e6,1)+" mi":a>=1e3?fmt(v/1e3,0)+" mil":fmt(v,0)};
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+let BR=[],US=[],H={};
+// ---------- history helpers ----------
+function series(sym){const h=H[sym];if(!h)return null;if(h._s)return h._s;let d=h.d0;const out=[[d,h.c[0]]];h.dd.forEach((x,i)=>{d+=x;out.push([d,h.c[i+1]])});h._s=out;return out}
+function retOver(sym,days){const s=series(sym);if(!s||s.length<2)return null;const last=s[s.length-1];const target=last[0]-days;let base=null;for(const p of s){if(p[0]<=target)base=p;else break}if(!base){if(days>=360&&s[0][0]<=target+10)base=s[0];else return null}return (last[1]/base[1]-1)*100}
+function ytd(sym){const s=series(sym);if(!s)return null;const last=s[s.length-1];const y=new Date(last[0]*864e5).getUTCFullYear();const start=Date.UTC(y,0,1)/864e5;let base=null;for(const p of s){if(p[0]<start)base=p;else break}return base?(last[1]/base[1]-1)*100:null}
+function vol(sym){const s=series(sym);if(!s||s.length<30)return null;const r=[];for(let i=1;i<s.length;i++)r.push(Math.log(s[i][1]/s[i-1][1]));const m=r.reduce((a,b)=>a+b,0)/r.length;const v=r.reduce((a,b)=>a+(b-m)**2,0)/(r.length-1);return Math.sqrt(v*252)*100}
+function mdd(sym){const s=series(sym);if(!s)return null;let pk=-Infinity,dd=0;for(const[,c]of s){pk=Math.max(pk,c);dd=Math.min(dd,c/pk-1)}return dd*100}
+function dchg(sym){const s=series(sym);if(!s||s.length<2)return null;return (s[s.length-1][1]/s[s.length-2][1]-1)*100}
+
+function sparkSVG(sym,w=200,h=46){const s=series(sym);if(!s)return"";const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const pts=s.map((p,i)=>[(i/(s.length-1))*w,h-2-((p[1]-mn)/(mx-mn||1))*(h-4)]);const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join("");const col=up?"var(--up)":"var(--down)";return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`}
+
+// ---------- routing ----------
+const VIEWS=["mercado","b3","eua","acoes","calc"];
+function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat()}
+addEventListener("hashchange",route);
+
+// ---------- overview ----------
+let dsDays=365;
+function renderDestaques(){
+  const per={30:"1 mês",182:"6 meses",365:"12 meses"}[dsDays];
+  const top=(list,cur)=>{const r=list.filter(x=>H[x.t]).map(x=>({x,v:retOver(x.t,dsDays)})).filter(o=>o.v!=null).sort((a,b)=>b.v-a.v).slice(0,8);
+    return `<div class="tbox"><table><tbody>${r.map((o,i)=>`<tr data-t="${esc(o.x.t)}" data-m="${cur}"><td class="l num muted">${i+1}</td><td class="t">${esc(o.x.t)}</td><td class="nm" style="max-width:150px">${esc(o.x.n)}</td><td>${pill(o.v)}</td></tr>`).join("")}</tbody></table></div>`};
+  $("#dsBR").innerHTML=top(BR,"br");$("#dsUS").innerHTML=top(US,"us");
+  $("#dsBRi").textContent=`Variação em ${per}. Clique para ver a ação.`;$("#dsUSi").textContent=`Variação em ${per}, em dólar.`;
+}
+function renderDsRF(){const rs=allProducts().filter(p=>(p.g??0)>=2).map(p=>{const r=simulate({t:p.t,x:p.x,ir:p.ir,val:10000,ap:0,meses:24,cust:p.c||0});return {p,la:(Math.pow(r.liq/10000,12/24)-1)*100}}).sort((a,b)=>b.la-a.la).slice(0,6);
+  $("#dsRF").innerHTML=`<div class="tbox"><table><tbody>${rs.map((o,i)=>`<tr style="cursor:default"><td class="l num muted">${i+1}</td><td class="l" style="white-space:normal"><b>${esc(o.p.b)}</b> · ${esc(o.p.n)}<br><span class="small muted">${esc(descTaxa(o.p))} · ${SEG[o.p.g][1]}${o.p.real?"":" · taxa de exemplo"}</span></td><td class="n up">${fmt(o.la)}% a.a.</td></tr>`).join("")}</tbody></table></div>`}
+segs("#dsPer",v=>{dsDays=+v;renderDestaques()});
+function renderOverview(){
+  renderDestaques();
+  const idx=[["^BVSP","Ibovespa","pts"],["^GSPC","S&P 500","pts"],["^IXIC","Nasdaq","pts"],["BRL=X","Dólar (US$ em R$)","brl"]];
+  $("#idxs").innerHTML=idx.map(([s,n,u])=>{const h=H[s];if(!h)return"";const d=dchg(s),y=retOver(s,365);return `<div class="panel idx"><div class="lbl">${n}</div><div class="val">${u==="brl"?"R$ "+fmt(h.p,4):fmt(h.p,0)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
+  const poupA=(Math.pow(1+MACRO.poupMes/100,12)-1)*100;
+  const chips=[["Selic",MACRO.selic+"% a.a."],["CDI",fmt(MACRO.cdi)+"% a.a."],["IPCA 12 meses",fmt(MACRO.ipca12)+"%"],["Juro real (CDI − IPCA)",fmt(((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100)+"% a.a."],["Poupança",fmt(poupA)+"% a.a."],["Dólar PTAX","R$ "+fmt(MACRO.ptax,4)]];
+  $("#macro").innerHTML=chips.map(([a,b])=>`<span class="chip">${a}<b>${b}</b></span>`).join("");
+  $("#calcMacro").innerHTML=$("#macro").innerHTML;
+  const mv=(list,cur)=>{const s=[...list].filter(r=>r.c!=null).sort((a,b)=>b.c-a.c);const top=s.slice(0,6),bot=s.slice(-6).reverse();const row=r=>`<tr data-t="${esc(r.t)}" data-m="${cur}"><td class="t">${esc(r.t)}</td><td class="nm">${esc(r.n)}</td><td class="n">${cur==="br"?fmt(r.p):usd(r.p)}</td><td>${pill(r.c)}</td></tr>`;return `<div class="tbox"><table><tbody>${top.map(row).join("")}<tr><td colspan="4" style="background:var(--surface2);height:4px;padding:0"></td></tr>${bot.map(row).join("")}</tbody></table></div>`};
+  $("#movBR").innerHTML=mv(BR.slice(0,100),"br");
+  $("#movUS").innerHTML=mv([...US].sort((a,b)=>b.mc-a.mc).slice(0,200),"us");
+}
+
+// ---------- tables ----------
+function mkTable(cfg){
+  const st={sort:cfg.sort,dir:-1,n:100};
+  const sel=$("#"+cfg.id+"sec");[...new Set(cfg.data().map(r=>r.s))].sort().forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;sel.appendChild(o)});
+  function rows(){const q=$("#"+cfg.id+"q").value.trim().toLowerCase();const sec=sel.value;let r=cfg.data().filter(x=>(!sec||x.s===sec)&&(!q||x.t.toLowerCase().includes(q)||(x.n||"").toLowerCase().includes(q))&&(!cfg.extra||cfg.extra(x)));const c=cfg.cols.find(c=>c.k===st.sort);r.sort((a,b)=>{const va=c.v(a),vb=c.v(b);if(va==null)return 1;if(vb==null)return -1;return(typeof va==="string"?va.localeCompare(vb):va-vb)*st.dir});return r}
+  function render(){const r=rows();$("#"+cfg.id+"count").textContent=`${r.length} ações`;const vis=r.slice(0,st.n);
+    $("#"+cfg.id+"t").innerHTML=`<thead><tr>${cfg.cols.map(c=>`<th class="${c.l?"l":""}" data-k="${c.k}" title="${esc(c.tip||"")}">${c.h}${st.sort===c.k?`<span class="arr"> ${st.dir<0?"▼":"▲"}</span>`:""}</th>`).join("")}</tr></thead><tbody>${vis.map(x=>`<tr data-t="${esc(x.t)}" data-m="${cfg.m}">${cfg.cols.map(c=>c.r(x)).join("")}</tr>`).join("")}</tbody>`;
+    $("#"+cfg.id+"shown").textContent=`Mostrando ${vis.length} de ${r.length}`;$("#"+cfg.id+"more").hidden=vis.length>=r.length}
+  $("#"+cfg.id+"t").addEventListener("click",e=>{const th=e.target.closest("th");if(th){const k=th.dataset.k;if(st.sort===k)st.dir*=-1;else{st.sort=k;st.dir=cfg.cols.find(c=>c.k===k).l?1:-1}render()}});
+  ["q","sec","liq"].forEach(x=>{const el=$("#"+cfg.id+x);el&&el.addEventListener("input",()=>{st.n=100;render()})});
+  $("#"+cfg.id+"more").addEventListener("click",()=>{st.n+=200;render()});
+  render();
+}
+const nC=(k,h,f,tip)=>({k,h,tip,v:x=>x[k],r:x=>`<td class="n">${f(x[k])}</td>`});
+const fx=v=>v==null||v===0?"–":fmt(v);
+const fp=v=>v==null?"–":fmt(v,1)+"%";
+const fp0=v=>v==null||v===0?"–":fmt(v,1)+"%";
+
+// ---------- heatmap + detail ----------
+let hm={m:"br",p:"d"};
+function perVal(r,m){if(hm.p==="d")return r.c;const days={"1m":30,"6m":182,"12m":365}[hm.p];return retOver(r.t,days)}
+function tileColor(v){if(v==null)return"#6b6b6b";const lim=hm.p==="d"?4:hm.p==="1m"?12:40;const t=Math.max(-1,Math.min(1,v/lim));const neu=[122,110,106],g=[14,122,67],r=[179,38,30];const tgt=t>=0?g:r;const a=Math.pow(Math.abs(t),.7);const c=neu.map((n,i)=>Math.round(n+(tgt[i]-n)*a));return `rgb(${c})`}
+function renderHeat(){
+  let list=hm.m==="br"?BR.slice(0,150):[...US].sort((a,b)=>b.mc-a.mc).slice(0,150);
+  if(hm.p!=="d")list=list.filter(r=>H[r.t]);
+  $("#hmInfo").textContent=hm.m==="br"?`${list.length} ações mais negociadas da B3`:`${list.length} maiores empresas dos EUA`+(hm.p!=="d"?" com histórico disponível":"");
+  const by={};list.forEach(r=>{(by[r.s]=by[r.s]||[]).push(r)});
+  const secs=Object.entries(by).sort((a,b)=>b[1].length-a[1].length);
+  $("#heat").innerHTML=secs.map(([s,rs])=>`<div class="sector"><h4>${esc(s)}</h4><div class="tiles">${rs.map(r=>{const v=perVal(r);return `<button class="tile" style="background:${tileColor(v)}" data-t="${esc(r.t)}" data-m="${hm.m}" title="${esc(r.n)}"><span class="tk">${esc(r.t)}</span><span class="pc">${pct(v,hm.p==="d"?2:1)}</span></button>`}).join("")}</div></div>`).join("");
+}
+function chartSVG(sym,cur){const s=series(sym);if(!s)return`<p class="muted">Sem histórico de 1 ano para este ativo nesta versão. A variação do dia e os indicadores estão ao lado.</p>`;
+  const W=800,Hh=260,pl=8,pr=58,pt=10,pb=22;const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
+  const X=i=>pl+(i/(s.length-1))*(W-pl-pr),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
+  const d=s.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");
+  let g="";for(let k=0;k<=4;k++){const v=mn+(mx-mn)*k/4;const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,v>=1000?0:2)}</text>`}
+  const months=[];let lm=-1;s.forEach((p,i)=>{const dt=new Date(p[0]*864e5);const m=dt.getUTCMonth();if(m!==lm){lm=m;if(i>5&&i<s.length-5)months.push([i,dt])}});
+  g+=months.filter((_,k)=>k%2===0).map(([i,dt])=>`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${dt.toLocaleDateString("pt-BR",{month:"short",year:"2-digit",timeZone:"UTC"})}</text>`).join("");
+  const li=s.length-1;
+  return `<svg class="chart" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)} em 12 meses">${g}<path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></svg>`}
+function openDetail(t,m){
+  const r=(m==="us"?US:BR).find(x=>x.t===t)||(m==="us"?BR:US).find(x=>x.t===t);if(!r)return;m=US.includes(r)?"us":"br";
+  const h=H[t];const cur=m==="us"?usd:v=>"R$ "+fmt(v);
+  const perf=[["Dia",r.c],["1 semana",retOver(t,7)],["1 mês",retOver(t,30)],["3 meses",retOver(t,91)],["6 meses",retOver(t,182)],["No ano",ytd(t)],["12 meses",retOver(t,365)]];
+  const kv=[];
+  if(h){kv.push(["Mínima 52 semanas",cur(h.lo)],["Máxima 52 semanas",cur(h.hi)],["Volatilidade anual",fp(vol(t))],["Maior queda no ano (drawdown)",fp(mdd(t))])}
+  if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
+  else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
+  $("#detail").innerHTML=`<div class="detail" style="margin-bottom:16px"><div class="panel"><div class="dhead"><span class="tk">${esc(t)}</span><span class="muted">${esc(r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
+  <div class="perf">${perf.map(([l,v])=>`<div class="${v==null?"na":cls(v)||"na"}"><small>${l}</small>${pct(v,1)}</div>`).join("")}</div>${chartSVG(t)}</div>
+  <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
+  $("#dClose").onclick=()=>{$("#detail").innerHTML=""};
+  if(location.hash!=="#acoes")location.hash="acoes";
+  $("#detail").scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.addEventListener("click",e=>{const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
+function segs(id,cb){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)})}
+segs("#hmMkt",v=>{hm.m=v;renderHeat()});segs("#hmPer",v=>{hm.p=v;renderHeat()});
+$("#hmq").addEventListener("keydown",e=>{if(e.key==="Enter"){const t=e.target.value.trim().toUpperCase();openDetail(t,BR.some(x=>x.t===t)?"br":"us")}});
+$("#hmq").addEventListener("change",e=>{const t=e.target.value.trim().toUpperCase();if(BR.some(x=>x.t===t)||US.some(x=>x.t===t))openDetail(t,BR.some(x=>x.t===t)?"br":"us")});
+
+// ---------- calculator ----------
+const IRtab=d=>d<=180?22.5:d<=360?20:d<=720?17.5:15;
+const IOF=[96,93,90,86,83,80,76,73,70,66,63,60,56,53,50,46,43,40,36,33,30,26,23,20,16,13,10,6,3,0];
+const iofPct=d=>d>=30?0:IOF[Math.max(0,d-1)];
+function annualRate(t,x){const cdi=+$("#pCDI").value/100,ipca=+$("#pIPCA").value/100;
+  if(t==="pos")return Math.pow(1+(Math.pow(1+cdi,1/252)-1)*x/100,252)-1;
+  if(t==="selic")return (1+cdi+0.001)*(1+x/100)-1; // Selic over ≈ CDI + 0,10 p.p.
+  if(t==="pre")return x/100;
+  if(t==="ipca")return (1+ipca)*(1+x/100)-1;
+  if(t==="poup")return Math.pow(1+MACRO.poupMes/100,12)-1; return 0}
+function simulate({t,x,ir,val,ap,meses,cust}){
+  const a=annualRate(t,x);const net=(1+a)/(1+(cust||0)/100)-1;const mr=Math.pow(1+net,1/12)-1;
+  const lots=[{p:+val||0,m:0}];for(let k=1;k<meses;k++)if(ap>0)lots.push({p:+ap,m:k});
+  let gross=0,inv=0,irv=0,iofv=0;const path=[];
+  for(let k=0;k<=meses;k++){let g=0,iv=0;lots.forEach(l=>{if(l.m<=k){g+=l.p*Math.pow(1+mr,k-l.m);iv+=l.p}});path.push([k,iv,g])}
+  lots.forEach(l=>{const age=meses-l.m;const fv=l.p*Math.pow(1+mr,age);const gain=fv-l.p;const days=age*30;const io=gain*iofPct(days)/100;const it=ir==="ir"?(gain-io)*IRtab(days)/100:0;gross+=fv;inv+=l.p;irv+=it;iofv+=io});
+  const liq=gross-irv-iofv;return {a,net,gross,inv,irv,iofv,liq,path}}
+function lineChart(svg,path,labels){const W=800,Hh=240,pl=8,pr=80,pt=10,pb=22;const mx=Math.max(...path.map(p=>Math.max(p[1],p[2])))||1;const X=i=>pl+(i/(path.length-1||1))*(W-pl-pr),Y=v=>pt+(1-v/mx)*(Hh-pt-pb);
+  let g="";for(let k=0;k<=4;k++){const v=mx*k/4,y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${W-pr+6}" y="${y+3}">R$ ${big(v)}</text>`}
+  const step=Math.max(1,Math.ceil(path.length/8));path.forEach((p,i)=>{if(i%step===0)g+=`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${labels(p[0])}</text>`});
+  const ln=j=>path.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[j]).toFixed(1)).join("");
+  svg.innerHTML=`${g}<path d="${ln(2)} L${X(path.length-1)} ${Y(0)} L${X(0)} ${Y(0)}Z" fill="var(--up)" opacity=".12"/><path d="${ln(2)}" fill="none" stroke="var(--up)" stroke-width="2.2" vector-effect="non-scaling-stroke"/><path d="${ln(1)}" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/><text x="${pl+4}" y="${pt+12}" style="fill:var(--up)">— Saldo bruto</text><text x="${pl+100}" y="${pt+12}" style="fill:var(--accent)">- - Total investido</text>`}
+function allProducts(){return [...PRODUTOS,...store.get("meusProdutos",[]).map(p=>({...p,mine:1}))]}
+function fillProducts(){const sel=$("#rfProd");const ps=allProducts();const groups={};ps.forEach((p,i)=>{const g=p.mine?"Meus produtos":p.b==="Tesouro Direto"?"Tesouro Direto (taxas reais)":p.ir==="isento"?"LCI, LCA e poupança (exemplos)":"CDBs de bancos (exemplos)";(groups[g]=groups[g]||[]).push([i,p])});
+  sel.innerHTML=`<option value="">Simulação livre (digite a taxa)</option>`+Object.entries(groups).map(([g,a])=>`<optgroup label="${esc(g)}">${a.map(([i,p])=>`<option value="${i}">${esc(p.b)} · ${esc(p.n)} · ${esc(descTaxa(p))}</option>`).join("")}</optgroup>`).join("")}
+function descTaxa(p){return p.t==="pos"?fmt(p.x,0)+"% do CDI":p.t==="pre"?fmt(p.x)+"% a.a.":p.t==="ipca"?"IPCA + "+fmt(p.x)+"%":p.t==="selic"?"Selic + "+fmt(p.x,4)+"%":"poupança"}
+const tipoLbl={pos:"(% do CDI)",selic:"(% a.a. acima da Selic)",pre:"(% a.a.)",ipca:"(% a.a. acima do IPCA)",poup:"(automática)"};
+function calcRF(){const t=$("#rfTipo").value;$("#rfTaxaLbl").textContent=tipoLbl[t];$("#rfTaxa").disabled=t==="poup";
+  const r=simulate({t,x:+$("#rfTaxa").value,ir:$("#rfIR").value,val:+$("#rfVal").value,ap:+$("#rfAp").value,meses:Math.max(1,Math.round(+$("#rfPrazo").value)),cust:+$("#rfCust").value});
+  const meses=Math.max(1,Math.round(+$("#rfPrazo").value));const ganho=r.liq-r.inv;
+  const liqA=r.inv>0&&$("#rfAp").value<=0?(Math.pow(r.liq/r.inv,12/meses)-1)*100:null;
+  const cdiA=+$("#pCDI").value,ipA=+$("#pIPCA").value;
+  const pcdi=liqA!=null?((Math.pow(1+liqA/100,1/252)-1)/(Math.pow(1+cdiA/100,1/252)-1))*100:null;
+  const realA=liqA!=null?((1+liqA/100)/(1+ipA/100)-1)*100:null;
+  const poup=simulate({t:"poup",x:0,ir:"isento",val:+$("#rfVal").value,ap:+$("#rfAp").value,meses});
+  $("#rfRes").innerHTML=[["Total investido",brl(r.inv)],["Saldo bruto",brl(r.gross)],["IR",brl(-r.irv)],["IOF",brl(-r.iofv)],["Saldo líquido",`<span class="up">${brl(r.liq)}</span>`],["Ganho líquido",`<span class="${cls(ganho)}">${brl(ganho)}</span>`],["Taxa bruta",fmt(r.a*100)+"% a.a."],["Líquida ao ano",liqA==null?"–":fmt(liqA)+"%"],["Equivale a (líquido)",pcdi==null?"–":fmt(pcdi,1)+"% do CDI"],["Ganho real (acima do IPCA)",realA==null?"–":`<span class="${cls(realA)}">${pct(realA)}</span> a.a.`],["Na poupança daria",brl(poup.liq)],["Diferença p/ poupança",`<span class="${cls(r.liq-poup.liq)}">${brl(r.liq-poup.liq)}</span>`]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join("");
+  lineChart($("#rfChart"),r.path,m=>m%12===0?(m/12)+"a":m+"m");
+}
+$("#rfProd").addEventListener("change",()=>{const v=$("#rfProd").value;if(v===""){ $("#rfInfo").textContent="";calcRF();return}const p=allProducts()[+v];$("#rfTipo").value=p.t;$("#rfTaxa").value=p.x;$("#rfIR").value=p.ir;$("#rfPrazo").value=p.m;$("#rfCust").value=p.c||0;
+  $("#rfInfo").innerHTML=`<b>${esc(p.b)} · ${esc(p.n)}</b> · ${esc(descTaxa(p))} · Liquidez: ${esc(p.liq||"–")} · ${p.ir==="isento"?"Isento de IR":"Tem IR regressivo"}${p.c?` · Custódia B3 ${fmt(p.c)}% a.a.`:""} <span class="tag ${p.real?"real":p.mine?"":"ex"}">${p.real?"taxa real do Tesouro":p.mine?"seu produto":"taxa de exemplo"}</span>`;calcRF()});
+["rfTipo","rfTaxa","rfIR","rfVal","rfAp","rfPrazo","rfCust"].forEach(id=>$("#"+id).addEventListener("input",calcRF));
+$("#npAdd").addEventListener("click",()=>{const p={b:$("#npBanco").value.trim()||"Meu banco",n:$("#npNome").value.trim()||"Produto",t:$("#npTipo").value,x:+$("#npTaxa").value,ir:$("#npIR").value,m:+$("#npPrazo").value||12,liq:$("#npLiq").value.trim()};if(!p.x){$("#npTaxa").focus();return}const l=store.get("meusProdutos",[]);l.push(p);store.set("meusProdutos",l);fillProducts();calcTop();const i=allProducts().length-1;$("#rfProd").value=i;$("#rfProd").dispatchEvent(new Event("change"));calcCmp()});
+
+function calcCmp(){const val=+$("#cmpVal").value,meses=Math.max(1,Math.round(+$("#cmpPrazo").value)),f=$("#cmpF").value;
+  let ps=allProducts().filter(p=>!f||(f==="Tesouro"?p.b==="Tesouro Direto":f==="CDB"?/CDB/.test(p.n):f==="LCI/LCA"?/LC[IA]/.test(p.n):/Diária/i.test(p.liq||"")));
+  const rs=ps.map(p=>({p,r:simulate({t:p.t,x:p.x,ir:p.ir,val,ap:0,meses,cust:p.c||0})})).sort((a,b)=>b.r.liq-a.r.liq);
+  const best=rs[0]?.r.liq;
+  $("#cmpT").innerHTML=`<thead><tr><th class="l">Emissor</th><th class="l">Produto</th><th class="l">Taxa</th><th class="l">Liquidez</th><th>Líquido final</th><th>Ganho líquido</th><th>Líquido a.a.</th><th>Vs. melhor</th></tr></thead><tbody>${rs.map(({p,r})=>{const la=(Math.pow(r.liq/val,12/meses)-1)*100;return `<tr style="cursor:default"><td class="l">${esc(p.b)}</td><td class="l">${esc(p.n)} <span class="tag ${p.real?"real":p.mine?"":"ex"}">${p.real?"real":p.mine?"seu":"exemplo"}</span></td><td class="l">${esc(descTaxa(p))}</td><td class="l small">${esc(p.liq||"–")}</td><td class="n">${brl(r.liq)}</td><td class="n up">${brl(r.liq-val)}</td><td class="n">${fmt(la)}%</td><td class="n ${r.liq<best?"down":""}">${r.liq<best?brl(r.liq-best):"melhor"}</td></tr>`}).join("")}</tbody>`}
+["cmpVal","cmpPrazo","cmpF"].forEach(id=>$("#"+id).addEventListener("input",calcCmp));
+
+const SEG={3:["Máxima","Tesouro Nacional"],2:["Alta","FGC + banco grande"],1:["Boa","FGC + banco médio/digital"],0:["Sua avaliação","produto seu"]};
+const segPill=g=>`<span class="pill ${g>=3?"up":g==2?"up":""}" style="${g==1?"background:var(--warnbg);color:var(--warn)":""}">${SEG[g][0]}</span> <span class="small muted">${SEG[g][1]}</span>`;
+function calcTop(){const val=+$("#topVal").value,meses=Math.max(1,Math.round(+$("#topPrazo").value)),min=+$("#topSeg").value,lq=$("#topLiq").value;
+  const ps=allProducts().map(p=>({...p,g:p.g??0})).filter(p=>p.t!=="poup"||true).filter(p=>p.g>=min||(p.mine&&min<=1)).filter(p=>!lq||/Diária/i.test(p.liq||""));
+  const rs=ps.map(p=>{const r=simulate({t:p.t,x:p.x,ir:p.ir,val,ap:0,meses,cust:p.c||0});return {p,r,la:(Math.pow(r.liq/val,12/meses)-1)*100}}).sort((a,b)=>b.r.liq-a.r.liq);
+  const best=f=>rs.find(f);
+  const cards=[["Maior rendimento com essa segurança",rs[0]],["Melhor do Tesouro Direto",best(x=>x.p.b==="Tesouro Direto")],["Melhor com liquidez diária",best(x=>/Diária/i.test(x.p.liq||""))],["Melhor isento de IR",best(x=>x.p.ir==="isento")]];
+  $("#topCards").innerHTML=cards.map(([t,x])=>x?`<div><small>${t}</small><b>${esc(x.p.b)} · ${esc(x.p.n)}</b><br><span class="small">${esc(descTaxa(x.p))} · <span class="up num">${fmt(x.la)}% a.a. líquido</span> · ${brl(x.r.liq)}</span></div>`:`<div><small>${t}</small><b class="muted">Nenhum com esse filtro</b></div>`).join("");
+  $("#topT").innerHTML=`<thead><tr><th class="l">#</th><th class="l">Emissor</th><th class="l">Produto</th><th class="l">Taxa</th><th class="l">Segurança</th><th class="l">Liquidez</th><th>Líquido a.a.</th><th>Valor final</th><th>Ganho líquido</th></tr></thead><tbody>${rs.map((x,i)=>`<tr style="cursor:default${i<3?";background:var(--upbg)":""}"><td class="l num">${i+1}</td><td class="l">${esc(x.p.b)}</td><td class="l">${esc(x.p.n)} <span class="tag ${x.p.real?"real":x.p.mine?"":"ex"}">${x.p.real?"taxa real":x.p.mine?"seu":"exemplo"}</span></td><td class="l">${esc(descTaxa(x.p))}</td><td class="l">${segPill(x.p.g)}</td><td class="l small">${esc(x.p.liq||"–")}</td><td class="n up">${fmt(x.la)}%</td><td class="n">${brl(x.r.liq)}</td><td class="n">${brl(x.r.liq-val)}</td></tr>`).join("")}</tbody>`;
+  $("#topFgc").innerHTML=val>250000?`<span class="pill down">Atenção</span> Acima de R$ 250 mil, divida entre bancos diferentes para ficar todo coberto pelo FGC. O Tesouro Direto não tem esse limite.`:"";
+}
+["topVal","topPrazo","topSeg","topLiq"].forEach(id=>$("#"+id).addEventListener("input",calcTop));
+function calcJC(){const v=+$("#jcVal").value,ap=+$("#jcAp").value,tx=+$("#jcTx").value/100,anos=Math.max(1,+$("#jcAnos").value),inf=+$("#jcInf").value/100;const mr=$("#jcPer").value==="m"?tx:Math.pow(1+tx,1/12)-1;const n=Math.round(anos*12);let s=v,inv=v;const path=[[0,inv,s]];for(let k=1;k<=n;k++){s=s*(1+mr)+ap;inv+=ap;path.push([k,inv,s])}
+  const real=s/Math.pow(1+inf,anos);const anual=(Math.pow(1+mr,12)-1)*100;
+  $("#jcRes").innerHTML=[["Total investido",brl(inv)],["Juros ganhos",`<span class="up">${brl(s-inv)}</span>`],["Saldo final",brl(s)],["Em dinheiro de hoje",brl(real)],["Taxa equivalente",fmt(anual)+"% a.a. / "+fmt(mr*100,3)+"% a.m."],["Juros no último mês",brl(s-path[n-1][2]-ap)]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join("");
+  lineChart($("#jcChart"),path.filter((_,i)=>i%Math.max(1,Math.floor(n/120))===0||i===n),m=>m%12===0?(m/12)+"a":"")}
+["jcVal","jcAp","jcTx","jcPer","jcAnos","jcInf"].forEach(id=>$("#"+id).addEventListener("input",calcJC));
+
+function calcEQ(){const m=Math.max(1,+$("#eqPrazo").value),is=+$("#eqIs").value,tr=+$("#eqTr").value;const a=IRtab(m*30);const eqCDB=is/(1-a/100);const eqLCI=tr*(1-a/100);
+  const rIs=simulate({t:"pos",x:is,ir:"isento",val:10000,ap:0,meses:m}).liq,rTr=simulate({t:"pos",x:tr,ir:"ir",val:10000,ap:0,meses:m}).liq;
+  $("#eqRes").innerHTML=[["Alíquota de IR no prazo",fmt(a,1)+"%"],["A LCI/LCA equivale a um CDB de",fmt(eqCDB,1)+"% do CDI"],["O CDB equivale a uma LCI/LCA de",fmt(eqLCI,1)+"% do CDI"],["R$ 10 mil na LCI/LCA viram",brl(rIs)],["R$ 10 mil no CDB viram",brl(rTr)],["Melhor opção",rIs>=rTr?"LCI/LCA (isenta)":"CDB (tributado)"]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join("")}
+["eqPrazo","eqIs","eqTr"].forEach(id=>$("#"+id).addEventListener("input",calcEQ));
+
+function calcMeta(){const alvo=+$("#mtAlvo").value,ini=+$("#mtIni").value,anos=Math.max(.1,+$("#mtAnos").value),tx=+$("#mtTx").value/100;const mr=Math.pow(1+tx,1/12)-1,n=Math.round(anos*12);const fvIni=ini*Math.pow(1+mr,n);const pmt=mr>0?(alvo-fvIni)*mr/(Math.pow(1+mr,n)-1):(alvo-fvIni)/n;const ap=Math.max(0,pmt);const inv=ini+ap*n;
+  $("#mtRes").innerHTML=[["Aporte mensal necessário",`<span class="up">${brl(ap)}</span>`],["Total que você vai investir",brl(inv)],["Juros vão render",brl(alvo-inv)],["Parte do patrimônio vinda de juros",fmt((alvo-inv)/alvo*100,0)+"%"]].map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join("")+(pmt<=0?`<div><small>Boa notícia</small><b>Só o que você já tem chega lá</b></div>`:"")}
+["mtAlvo","mtIni","mtAnos","mtTx"].forEach(id=>$("#"+id).addEventListener("input",calcMeta));
+["pCDI","pIPCA"].forEach(id=>$("#"+id).addEventListener("input",()=>{calcTop();renderDsRF();calcRF();calcCmp();calcEQ()}));
+segs("#ctabs",v=>{["top","rf","cmp","jc","eq","meta"].forEach(x=>$("#c-"+x).hidden=x!==v);store.set("ctab",v)});
+
+// ---------- boot ----------
+$("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;
+fillProducts();calcTop();calcRF();calcCmp();calcJC();calcEQ();calcMeta();renderDsRF();
+const ct=store.get("ctab","top");if(ct!=="top")$(`#ctabs button[data-v="${ct}"]`)?.click();
+if(!location.hash){const t=store.get("tab","mercado");if(t!=="mercado")location.hash=t}
+route();
+Promise.all(["br.json","us.json","hist.json"].map(f=>fetch(f).then(r=>{if(!r.ok)throw new Error(f);return r.json()}))).then(([b,u,h])=>{
+  BR=b;US=u;H=h;
+  for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
+  for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
+  $("#asof").textContent=`Dados de ${ASOF} · atualização automática diária · não é tempo real`;
+  renderOverview();
+  mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
+    {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
+    {k:"n",h:"Empresa",l:1,v:x=>x.n,r:x=>`<td class="nm">${esc(x.n)}</td>`},
+    {k:"s",h:"Setor",l:1,v:x=>x.s,r:x=>`<td class="l small">${esc(x.s)}</td>`},
+    {k:"p",h:"Preço R$",v:x=>x.p,r:x=>`<td class="n">${fmt(x.p)}</td>`},
+    {k:"c",h:"Dia",v:x=>x.c,r:x=>`<td>${pill(x.c)}</td>`},
+    {k:"y",h:"12 meses",v:x=>retOver(x.t,365),r:x=>{const v=retOver(x.t,365);return `<td class="n ${cls(v)}">${pct(v,1)}</td>`}},
+    nC("pl","P/L",fx,"Preço / lucro por ação"),nC("pvp","P/VP",fx,"Preço / valor patrimonial"),nC("dy","DY",fp,"Dividend yield 12 meses"),nC("roe","ROE",fp,"Retorno sobre patrimônio"),nC("ml","Marg. líq.",fp0),nC("evebitda","EV/EBITDA",fx),nC("dlpl","Dív.líq/PL",fx,"Dívida líquida / patrimônio"),
+    {k:"lq",h:"Liquidez/dia",v:x=>x.lq,r:x=>`<td class="n">${big(x.lq)}</td>`,tip:"Volume médio diário em R$ (2 meses)"},
+    {k:"mc",h:"Valor mercado",v:x=>x.mc,r:x=>`<td class="n">${x.mc?big(x.mc*1e6):"–"}</td>`}]});
+  mkTable({id:"eua",m:"us",sort:"mc",data:()=>US,cols:[
+    {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
+    {k:"n",h:"Empresa",l:1,v:x=>x.n,r:x=>`<td class="nm">${esc(x.n)}</td>`},
+    {k:"s",h:"Setor",l:1,v:x=>x.s,r:x=>`<td class="l small">${esc(x.s)}</td>`},
+    {k:"p",h:"Preço US$",v:x=>x.p,r:x=>`<td class="n">${fmt(x.p)}</td>`},
+    {k:"c",h:"Dia",v:x=>x.c,r:x=>`<td>${pill(x.c)}</td>`},
+    {k:"y",h:"12 meses",v:x=>retOver(x.t,365),r:x=>{const v=retOver(x.t,365);return `<td class="n ${cls(v)}">${pct(v,1)}</td>`}},
+    {k:"mc",h:"Valor mercado",v:x=>x.mc,r:x=>`<td class="n">${big(x.mc*1e6)}</td>`},
+    {k:"v",h:"Volume",v:x=>x.v,r:x=>`<td class="n">${big(x.v)}</td>`},
+    {k:"i",h:"Indústria",l:1,v:x=>x.i,r:x=>`<td class="l small">${esc(x.i)}</td>`},
+    {k:"co",h:"País",l:1,v:x=>x.co,r:x=>`<td class="l small">${esc(x.co)}</td>`}]});
+  $("#allticks").innerHTML=[...BR.slice(0,300),...US.slice(0,500)].map(r=>`<option value="${esc(r.t)}">${esc(r.n)}</option>`).join("");
+  if(!$("#v-acoes").hidden)renderHeat();
+}).catch(e=>{$("#asof").textContent="Não consegui carregar os dados das ações. Recarregue a página.";console.error(e)});
+</script>
+
+</body>
+</html>
