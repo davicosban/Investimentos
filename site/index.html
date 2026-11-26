@@ -36,7 +36,13 @@
   --glass:rgba(16,21,28,.72); --glow:radial-gradient(1200px 520px at 85% -10%,rgba(110,124,255,.20),transparent 60%),radial-gradient(900px 420px at -10% 0%,rgba(61,220,151,.10),transparent 60%);
   --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 20px 40px -24px rgba(0,0,0,.8); color-scheme:dark}
 *{box-sizing:border-box}
-html{background:var(--bg)}
+html{background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
 body{background:var(--bg);background-image:var(--glow);background-attachment:fixed;color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px 64px}
 /* header */
@@ -594,9 +600,9 @@ let checking=false;
 async function checkRemote(){if(checking)return;checking=true;try{
   const r=await DESK.childProcess.exec(`curl -sSfL --max-time 30 "${SITE}asof.json?t=${Date.now()}"`,{timeout:45000});
   if(r.code===0){const remote=JSON.parse(r.stdout).asof;if(remote&&remote!==ASOF){await refreshDesktop();return}}
-  $("#dbar").hidden=true}
+  dbar(`Atualizado automaticamente · dados de ${ASOF}`,"Atualizar agora",refreshDesktop)}
  catch(e){}finally{checking=false}}
-async function refreshDesktop(){try{await downloadAll();location.reload()}catch(e){
+async function refreshDesktop(){dbar("Buscando os dados mais recentes…",null);try{await downloadAll();location.reload()}catch(e){
   const m=String(e.message||e);if(m.startsWith("EPERM")){dbar("Sem permissão para buscar dados. Libere “acesso total” nas permissões do app.","Abrir permissões",()=>DESK.permissions.manage().catch(()=>{}))}
   else dbar("Não consegui buscar dados novos ("+m.slice(0,90)+"). Mostrando os últimos salvos.","Tentar de novo",refreshDesktop)}}
 async function getData(){
@@ -609,6 +615,7 @@ async function getData(){
   if(st!=="granted"){dbar(st==="denied"?"A busca de dados novos está bloqueada. Mostrando a versão que veio com o app.":"Para buscar os dados mais recentes, o app precisa da sua permissão.",st==="denied"?"Abrir permissões":"Permitir e atualizar",st==="denied"?()=>DESK.permissions.manage().catch(()=>{}):async()=>{try{const r=await DESK.permissions.request(["full-access"]);if(r["full-access"]==="granted")refreshDesktop();else dbar("Sem permissão. Mostrando a versão que veio com o app.",null)}catch(e){dbar("Não consegui pedir a permissão agora.",null)}});return bundled()}
   try{const c=await readCache();if(c){if(c["macro.json"])Object.assign(MACRO,c["macro.json"]);if(c["asof.json"])ASOF=c["asof.json"].asof;$("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;calcTop();calcRF();calcCmp();calcEQ();renderDsRF();
       const [d,h]=ASOF.split(" ");const [dd,mm,yy]=d.split("/");const age=(Date.now()-new Date(`${yy}-${mm}-${dd}T${h||"00:00"}:00-03:00`))/36e5;
+      dbar(`App de desktop · dados de ${ASOF}`,"Atualizar agora",refreshDesktop);
       setTimeout(checkRemote,800);setInterval(checkRemote,30*60*1000);
       return [c["br.json"],c["us.json"],c["hist.json"]]}}catch(e){}
   setTimeout(refreshDesktop,300);return bundled()}
