@@ -151,6 +151,16 @@ th .arr{color:var(--accent)}
 .dhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
 .dhead .tk{font-family:var(--f-display);font-size:44px;line-height:1}
 .dhead .px{font-family:var(--f-num);font-size:22px;font-weight:600}
+.fxgrid{display:grid;gap:14px;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);align-items:start}
+@media (max-width:860px){.fxgrid{grid-template-columns:1fr}}
+.conv{display:grid;grid-template-columns:1fr;gap:10px}
+.conv label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.conv #cvSwap{justify-self:center;padding:4px 14px}
+.cvres{margin:16px 0 10px;font-family:var(--f-display);font-size:38px;line-height:1.1;word-break:break-word}
+.cvres small{display:block;font-family:var(--f-num);font-size:12.5px;color:var(--muted);margin-top:6px}
+#fxt th:first-child,#fxt td:first-child{text-align:left}
+#fxt tbody tr{cursor:pointer}
+.fxcode{display:inline-block;font-family:var(--f-num);font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--muted)}
 .chart{width:100%;height:260px;display:block}
 .chartbox{margin-top:6px}.chartbox .chart{cursor:crosshair;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .chart.selon .base{opacity:.35}
@@ -202,7 +212,7 @@ section{animation:rise .5s ease both}
   <div class="brand"><h1>Painel Investimentos</h1><span class="asof" id="asof">Carregando dados…</span><button class="themebtn" id="themebtn" type="button" title="Tema claro ou escuro" aria-label="Alternar tema claro ou escuro"></button></div>
   <div class="dbar" id="dbar" hidden><span id="dmsg"></span><button id="dbtn" class="primary" type="button"></button></div>
   <nav class="tabs" id="tabs">
-    <a href="#mercado">Visão geral</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#calc">Calculadora</a>
+    <a href="#mercado">Visão geral</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#cambio">Câmbio</a><a href="#calc">Calculadora</a>
   </nav>
 </div></header>
 
@@ -262,6 +272,20 @@ section{animation:rise .5s ease both}
     <span class="legend"><span class="sw" style="background:#D63A30"></span>queda forte <span class="sw" style="background:#5C606E"></span>estável <span class="sw" style="background:#10A368"></span>alta forte</span>
   </div>
   <div id="heat"></div>
+</section>
+
+<section id="v-cambio" hidden>
+  <div class="hero"><p class="eyebrow">Câmbio</p><h2 class="display">Moedas <em>em reais</em></h2><p class="lede" id="fxLede">Quanto custa cada moeda em R$, e quanto ela subiu ou caiu.</p></div>
+  <div class="grid g4" id="fxCards"></div>
+  <div class="fxgrid" style="margin-top:14px">
+    <div class="panel"><h3 style="margin-top:0">Todas as moedas</h3><div class="tbox"><table id="fxt"></table></div>
+      <p class="muted small" style="margin-bottom:0">Cotação de fechamento de cada moeda em reais (fonte: Yahoo Finance). Clique numa moeda para ver o gráfico e escolher o período.</p></div>
+    <div class="panel"><h3 style="margin-top:0">Conversor</h3>
+      <div class="conv"><label>Valor<input type="number" id="cvAmt" value="1000" min="0" step="any" inputmode="decimal"></label>
+      <label>De<select id="cvFrom"></select></label><button type="button" id="cvSwap" class="mini" title="Inverter" aria-label="Inverter moedas">⇄</button><label>Para<select id="cvTo"></select></label></div>
+      <div class="cvres" id="cvRes"></div>
+      <p class="muted small" style="margin-bottom:0">Usa a cotação de mercado. Bancos e casas de câmbio cobram spread e IOF (hoje 3,5% no cartão e na compra de moeda em espécie), então o valor real fica um pouco pior.</p></div>
+  </div>
 </section>
 
 <section id="v-calc" hidden>
@@ -448,7 +472,7 @@ function dchg(sym){const s=series(sym);if(!s||s.length<2)return null;return (s[s
 function sparkSVG(sym,w=300,h=64){const s=series(sym);if(!s)return"";const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const pts=s.map((p,i)=>[(i/(s.length-1))*w,h-2-((p[1]-mn)/(mx-mn||1))*(h-4)]);const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join("");const col=up?"var(--up)":"var(--down)";return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`}
 
 // ---------- routing ----------
-const VIEWS=["mercado","b3","eua","acoes","calc"];
+const VIEWS=["mercado","b3","eua","acoes","cambio","calc"];
 function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat()}
 addEventListener("hashchange",route);
 
@@ -511,6 +535,26 @@ function renderHeat(){
   const secs=Object.entries(by).sort((a,b)=>b[1].length-a[1].length);
   $("#heat").innerHTML=secs.map(([s,rs])=>`<div class="sector"><h4>${esc(s)}</h4><div class="tiles">${rs.map(r=>{const v=perVal(r);return `<button class="tile" style="background:${tileColor(v)}" data-t="${esc(r.t)}" data-m="${hm.m}" title="${esc(r.n)}"><span class="tk">${esc(r.t)}</span><span class="pc">${pct(v,hm.p==="d"?2:1)}</span></button>`}).join("")}</div></div>`).join("");
 }
+// ---------- Câmbio ----------
+const FX=[["USDBRL=X","Dólar americano","USD"],["EURBRL=X","Euro","EUR"],["GBPBRL=X","Libra esterlina","GBP"],["ARSBRL=X","Peso argentino","ARS"],["CHFBRL=X","Franco suíço","CHF"],["JPYBRL=X","Iene japonês","JPY"],["CNYBRL=X","Yuan chinês","CNY"],["CADBRL=X","Dólar canadense","CAD"],["AUDBRL=X","Dólar australiano","AUD"],["MXNBRL=X","Peso mexicano","MXN"],["CLPBRL=X","Peso chileno","CLP"],["UYUBRL=X","Peso uruguaio","UYU"]];
+const fxSym=s=>H[s]?s:(s==="USDBRL=X"&&H["BRL=X"]?"BRL=X":null);
+const fxR=v=>v==null?"–":"R$ "+fmt(v,v<0.01?5:v<1?4:4);
+const fxInfo=t=>FX.find(f=>f[0]===t||(t==="BRL=X"&&f[0]==="USDBRL=X"));
+function renderFX(){const list=FX.map(f=>({f,s:fxSym(f[0])})).filter(x=>x.s);
+  if(!list.length){$("#fxCards").innerHTML=`<p class="muted">As cotações de câmbio chegam na próxima atualização automática.</p>`;return}
+  $("#fxCards").innerHTML=list.slice(0,4).map(({f,s})=>{const h=H[s],d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="fx" style="cursor:pointer"><div class="lbl">${f[1]} · ${f[2]}</div><div class="val">${fxR(h.p)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
+  $("#fxt").innerHTML=`<thead><tr><th>Moeda</th><th class="n">Em R$</th><th class="n">Dia</th><th class="n">1 mês</th><th class="n">No ano</th><th class="n">12 meses</th></tr></thead><tbody>${list.map(({f,s})=>`<tr data-t="${s}" data-m="fx"><td><span class="fxcode">${f[2]}</span> ${f[1]}</td><td class="n">${fxR(H[s].p)}</td><td class="n">${pill(dchg(s))}</td><td class="n">${pill(retOver(s,30))}</td><td class="n">${pill(ytd(s))}</td><td class="n">${pill(retOver(s,365))}</td></tr>`).join("")}</tbody>`;
+  const u=fxSym("USDBRL=X"),e=fxSym("EURBRL=X");
+  if(u)$("#fxLede").innerHTML=`Dólar a <b>${fxR(H[u].p)}</b> (${`<b class="${cls(dchg(u))}">${pct(dchg(u))}</b>`} no dia)${e?`, euro a <b>${fxR(H[e].p)}</b>`:""}. Em 12 meses o dólar ${retOver(u,365)>=0?"subiu":"caiu"} <b class="${cls(retOver(u,365))}">${pct(Math.abs(retOver(u,365)),1).replace("+","")}</b> contra o real.`;
+  const opts=`<option value="BRL">BRL · Real brasileiro</option>`+list.map(({f})=>`<option value="${f[2]}">${f[2]} · ${f[1]}</option>`).join("");
+  if(!$("#cvFrom").options.length){$("#cvFrom").innerHTML=opts;$("#cvTo").innerHTML=opts;$("#cvFrom").value="USD";$("#cvTo").value="BRL"}
+  calcConv()}
+function fxRate(code){if(code==="BRL")return 1;const f=FX.find(x=>x[2]===code);const s=f&&fxSym(f[0]);return s?H[s].p:null}
+function calcConv(){const a=parseFloat($("#cvAmt").value)||0,fr=$("#cvFrom").value,to=$("#cvTo").value,rf=fxRate(fr),rt=fxRate(to);if(!rf||!rt){$("#cvRes").textContent="–";return}
+  const v=a*rf/rt,unit=rf/rt;const nf=(x,c)=>x.toLocaleString("pt-BR",{style:"currency",currency:c,maximumFractionDigits:x<1?4:2});
+  $("#cvRes").innerHTML=`${nf(v,to)}<small>${nf(a,fr)} = ${nf(v,to)} · 1 ${fr} = ${unit.toLocaleString("pt-BR",{maximumFractionDigits:unit<1?6:4})} ${to}</small>`}
+["#cvAmt","#cvFrom","#cvTo"].forEach(id=>$(id).addEventListener("input",calcConv));
+$("#cvSwap").onclick=()=>{const a=$("#cvFrom").value;$("#cvFrom").value=$("#cvTo").value;$("#cvTo").value=a;calcConv()};
 // ---------- Gráfico da ação com períodos ----------
 const HX={};const hxName=s=>s.replace(/[^A-Za-z0-9]/g,"_")+".json";
 function loadHX(sym){if(HX[sym]!==undefined)return Promise.resolve(HX[sym]);
@@ -577,14 +621,16 @@ let DET=null;
 function perfBtn(k,l,v,on){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":pct(v,1)}</button>`}
 function showRange(){if(!DET)return;SEL={a:null,b:null,drag:false,moved:false};$("#chartbox").innerHTML=chartSVG(DET.t,DET.cur,DET.k)}
 function openDetail(t,m){
-  const r=(m==="us"?US:BR).find(x=>x.t===t)||(m==="us"?BR:US).find(x=>x.t===t);if(!r)return;m=US.includes(r)?"us":"br";
-  const h=H[t];const cur=m==="us"?usd:v=>"R$ "+fmt(v);
+  let r;if(m==="fx"){const f=fxInfo(t);if(!f||!H[t])return;r={t,n:f[1],p:H[t].p,c:dchg(t),_code:f[2]}}
+  else{r=(m==="us"?US:BR).find(x=>x.t===t)||(m==="us"?BR:US).find(x=>x.t===t);if(!r)return;m=US.includes(r)?"us":"br"}
+  const h=H[t];const cur=m==="us"?usd:m==="fx"?fxR:v=>"R$ "+fmt(v);
   const pv={d1:r.c,d5:retOver(t,7),m1:retOver(t,30),m6:retOver(t,182),ytd:ytd(t),y1:retOver(t,365),max:HX[t]?maxChange(t):undefined};
   const kv=[];
   if(h){kv.push(["Mínima 52 semanas",cur(h.lo)],["Máxima 52 semanas",cur(h.hi)],["Volatilidade anual",fp(vol(t))],["Maior queda no ano (drawdown)",fp(mdd(t))])}
-  if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
+  if(m==="fx"){kv.push(["Moeda",esc(r.n)+" ("+r._code+")"],["1 "+r._code+" em reais",fxR(r.p)],["R$ 1 em "+r._code,(1/r.p).toLocaleString("pt-BR",{maximumFractionDigits:r.p<1?2:4})])}
+  else if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
-  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(t)}</span><span class="muted">${esc(r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
+  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":t)}</span><span class="muted">${esc(r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
   <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k])).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,"y1")}</div></div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
@@ -733,8 +779,8 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`;
-  renderOverview();
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
+  renderOverview();renderFX();
   mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
     {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
     {k:"n",h:"Empresa",l:1,v:x=>x.n,r:x=>`<td class="nm">${esc(x.n)}</td>`},
