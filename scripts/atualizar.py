@@ -13,10 +13,10 @@ UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/53
       "Accept": "application/json, text/html, */*", "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
       "Cache-Control": "no-cache", "Pragma": "no-cache"}
 
-def get(url, tries=2):
+def get(url, tries=2, timeout=25):
     for i in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=25) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
                 b = r.read()
                 enc = r.headers.get_content_charset() or "utf-8"
                 return b.decode(enc, "replace")
@@ -74,28 +74,11 @@ def nasdaq():
     return [r for r in out if r["t"] not in ("GOOGM", "GOOGN", "CCZ")]
 
 # ---------- Histórico (Yahoo) ----------
-LONG = {}
 def chart(sym):
-    """Um pedido só por ativo: histórico diário completo. Guarda 1 ano em hist.json e o resto (semanal) em LONG."""
-    try:
-        j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?period1=0&period2={int(time.time()) + 86400}&interval=1d")
-        x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
-    except Exception:
-        x = {"timestamp": [], "meta": {"dataGranularity": "x"}}; m = x["meta"]; c = []
+    j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + "?range=1y&interval=1d")
+    x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
     off = m.get("gmtoffset") or 0
-    allp = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
-    if m.get("dataGranularity", "1d") != "1d" or len(allp) < 2:
-        j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + "?range=1y&interval=1d")
-        x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
-        off = m.get("gmtoffset") or 0
-        pts = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
-    else:
-        pts = [p for p in allp if p[0] >= allp[-1][0] - 366]
-        wk = {}
-        for d, v in allp: wk[(d + 3) // 7] = (d, v)   # último fechamento de cada semana
-        w = [wk[k] for k in sorted(wk)]
-        if len(w) > 1:
-            LONG[sym.replace(".SA", "")] = {"d0": w[0][0], "dd": [w[i][0] - w[i - 1][0] for i in range(1, len(w))], "c": [v for _, v in w]}
+    pts = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
     days = [p[0] for p in pts]
     return {"n": m.get("longName") or m.get("shortName"), "hi": m.get("fiftyTwoWeekHigh"), "lo": m.get("fiftyTwoWeekLow"),
             "p": m.get("regularMarketPrice"), "pc": m.get("chartPreviousClose"), "t": m.get("regularMarketTime"),
@@ -105,7 +88,8 @@ def chart(sym):
 def fname(sym): return re.sub(r"[^A-Za-z0-9]", "_", sym) + ".json"
 
 def yraw(sym, rng, itv):
-    url = ("https://query2.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?range={rng}&interval={itv}&includePrePost=false")
+    q = f"period1=0&period2={int(time.time()) + 86400}" if rng == "max" else f"range={rng}"
+    url = ("https://query2.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?{q}&interval={itv}&includePrePost=false")
     for i in range(2):
         try:
             j = jget(url); break
@@ -113,7 +97,8 @@ def yraw(sym, rng, itv):
             err = e; time.sleep(20 if "429" in str(e) else 3)
     else:
         raise err
-    x = j["chart"]["result"][0]
+    x = j["chart"]["result"][0]; off = x["meta"].get("gmtoffset") or 0
+    if itv == "1wk": return [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x.get("timestamp") or [], x["indicators"]["quote"][0]["close"]) if v is not None]
     return [(ts, float("%.5g" % v)) for ts, v in zip(x.get("timestamp") or [], x["indicators"]["quote"][0]["close"]) if v is not None]
 
 def intraday(sym):
@@ -130,7 +115,7 @@ def bcb(code, n):
 
 def bcbrange(code, years):
     hoje = datetime.date.today(); ini = hoje - datetime.timedelta(days=int(years * 365.25) - 2)
-    return jget(f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={ini:%d/%m/%Y}&dataFinal={hoje:%d/%m/%Y}")
+    return json.loads(get(f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={ini:%d/%m/%Y}&dataFinal={hoje:%d/%m/%Y}", tries=3, timeout=90))
 
 def macrohist():
     out = {}
@@ -193,7 +178,7 @@ def main():
     except Exception as e:
         us = old_us; log.append(f"Nasdaq FALHOU: {e}")
     # Histórico
-    syms = [r["t"] + ".SA" for r in br[:100]] + ["^BVSP"] + [r["t"] for r in us if r["t"] != "GOOG"][:117] + ["^GSPC", "^IXIC", "BRL=X"] + FX
+    syms = FX + ["^BVSP", "^GSPC", "^IXIC", "BRL=X"] + [r["t"] + ".SA" for r in br[:100]] + [r["t"] for r in us if r["t"] != "GOOG"][:117]
     hist = {}
     ERR = []
     def one(s):
@@ -215,11 +200,26 @@ def main():
         path = os.path.join(hx, fname(key))
         try: prev = json.load(open(path))
         except Exception: prev = {}
-        for k in ("d1", "maxAt"): prev.pop(k, None)
+        prev.pop("d1", None)
         prev.update(upd); json.dump(prev, open(path, "w"), separators=(",", ":"))
-    for key, w in LONG.items(): hxsave(key, {"max": w})
-    log.append(f"Yahoo histórico completo: {len(LONG)} ativos")
-    time.sleep(45)   # dá um respiro ao Yahoo antes dos pedidos intradiários
+    # histórico desde o início (semanal): até 40 ativos por execução, os mais antigos primeiro; renova 1x por semana
+    hoje = int(time.time() // 86400); fila = []
+    for sym in syms:
+        try: prev = json.load(open(os.path.join(hx, fname(sym.replace(".SA", "")))))
+        except Exception: prev = {}
+        if hoje - prev.get("maxAt", 0) >= 7: fila.append((prev.get("maxAt", 0), sym))
+    fila.sort(); okl = 0; fl = 0; errl = ""
+    for _, sym in fila[:40]:
+        try:
+            w = yraw(sym, "max", "1wk")
+            if len(w) > 1:
+                hxsave(sym.replace(".SA", ""), {"max": {"d0": w[0][0], "dd": [w[i][0] - w[i - 1][0] for i in range(1, len(w))], "c": [v for _, v in w]}, "maxAt": hoje}); okl += 1; fl = 0
+        except Exception as e:
+            fl += 1; errl = errl or f"{sym}: {str(e)[:100]}"
+            if fl >= 3: break
+        time.sleep(1)
+    log.append(f"Yahoo histórico completo: {okl} ativos nesta execução, faltam {max(0, len(fila) - okl)}" + (f" (erro: {errl})" if errl else ""))
+    time.sleep(20)
     ok = 0; falhas = 0; erro1 = ""
     for sym in syms:
         try:
@@ -232,7 +232,7 @@ def main():
         else:
             falhas += 1
             if falhas >= 3: log.append("Yahoo intradiário: muitas falhas seguidas, parei"); break
-        time.sleep(0.8)
+        time.sleep(1)
     log.append(f"Yahoo intradiário: {ok} ativos" + (f" (1º erro: {erro1[:160]})" if erro1 else ""))
     # Macro
     idx = os.path.join(SITE, "index.html"); s = open(idx, encoding="utf-8").read()
