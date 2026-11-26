@@ -209,15 +209,29 @@ def main():
             if h: hist[key] = h
             elif key in old_h: hist[key] = old_h[key]
     okfx = 0
-    for sym in FX:
+    try:   # Banco Central Europeu via Frankfurter: 1 pedido para todas as moedas (sem ARS, CLP, UYU)
+        ini = (datetime.date.today() - datetime.timedelta(days=366)).isoformat()
+        codes = [f[:3] for f in FX]
+        j = jget(f"https://api.frankfurter.dev/v1/{ini}..?from=BRL&to={','.join(c for c in codes if c not in ('ARS', 'CLP', 'UYU'))}")
+        dates = sorted(j["rates"])
+        for code in codes:
+            pts = [((datetime.date.fromisoformat(d) - datetime.date(1970, 1, 1)).days, float("%.6g" % (1 / j["rates"][d][code]))) for d in dates if code in j["rates"][d]]
+            if len(pts) < 2: continue
+            days = [p[0] for p in pts]; c = [p[1] for p in pts]
+            hist[code + "BRL=X"] = {"n": code, "hi": max(c), "lo": min(c), "p": c[-1], "pc": c[0], "t": None,
+                                    "d0": days[0], "dd": [days[i] - days[i - 1] for i in range(1, len(days))], "c": c}
+            okfx += 1
+    except Exception as e:
+        log.append(f"Câmbio Frankfurter FALHOU: {str(e)[:120]}")
+    for sym in FX:   # o que faltar: tenta a AwesomeAPI (pode bloquear o GitHub)
+        if sym in hist: continue
         try:
             hist[sym] = awesome(sym[:3]); okfx += 1
         except Exception as e:
             if sym in old_h: hist[sym] = old_h[sym]
-            log.append(f"Câmbio {sym[:3]} FALHOU: {str(e)[:100]}")
-        time.sleep(0.3)
+            if "429" in str(e): break
+    log.append(f"Câmbio: {okfx} moedas")
     if "USDBRL=X" in hist and "BRL=X" not in hist: hist["BRL=X"] = hist["USDBRL=X"]
-    log.append(f"Câmbio (AwesomeAPI): {okfx} moedas")
     log.append(f"Yahoo: {len(hist)} históricos ({len(syms) - len(ERR)} novos, {len(ERR)} falharam" + (f"; ex.: {ERR[0]}" if ERR else "") + ")")
     for r in br:
         h = hist.get(r["t"])
