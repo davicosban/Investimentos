@@ -14,8 +14,8 @@
 /* App instalado (Edge/Chrome) com a barra de título integrada */
 @media (display-mode: window-controls-overlay){
   /* faixa da barra de título fica livre (só para arrastar); o menu desce para baixo dos botões do Windows */
-  header.top{-webkit-app-region:drag;app-region:drag;top:0;padding-top:calc(env(titlebar-area-height,33px) + 6px)}
-  body::before{height:env(titlebar-area-height,33px)}
+  html body header.top{-webkit-app-region:drag;app-region:drag;top:0;padding-top:calc(env(titlebar-area-height,33px) + 6px)}
+  html body::before{height:env(titlebar-area-height,33px)}
   header.top a,header.top button,header.top input,header.top select,nav.tabs,.dbar{-webkit-app-region:no-drag;app-region:no-drag}
 }
 </style>
