@@ -1,0 +1,17 @@
+{
+  "name": "Painel Investimentos",
+  "short_name": "Investimentos",
+  "id": "/Investimentos/",
+  "start_url": "/Investimentos/#mercado",
+  "scope": "/Investimentos/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#07090D",
+  "theme_color": "#07090D",
+  "lang": "pt-BR",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
