@@ -159,8 +159,14 @@ th .arr{color:var(--accent)}
 .conv #cvSwap{justify-self:center;padding:4px 14px}
 .cvres{margin:16px 0 10px;font-family:var(--f-display);font-size:38px;line-height:1.1;word-break:break-word}
 .cvres small{display:block;font-family:var(--f-num);font-size:12.5px;color:var(--muted);margin-top:6px}
-#fxt th:first-child,#fxt td:first-child{text-align:left}
+#fxt th:nth-child(2),#fxt td:nth-child(2){text-align:left}
 #fxt tbody tr{cursor:pointer}
+.star{border:0;background:none;box-shadow:none;padding:2px 6px;font-size:17px;line-height:1;color:var(--muted);cursor:pointer;border-radius:8px}
+.star:hover{color:var(--warn);transform:none;background:var(--surface2)}
+.star[aria-pressed="true"]{color:var(--warn)}
+td.fv,th.fv{width:34px;padding-left:4px!important;padding-right:0!important;text-align:center}
+#favt th:nth-child(2),#favt td:nth-child(2),#favt th:nth-child(3),#favt td:nth-child(3){text-align:left}
+#favt tbody tr{cursor:pointer}
 .fxcode{display:inline-block;font-family:var(--f-num);font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--muted)}
 .chart{width:100%;height:260px;display:block}
 .chartbox{margin-top:6px}.chartbox .chart{cursor:crosshair;touch-action:pan-y;user-select:none;-webkit-user-select:none}
@@ -213,7 +219,7 @@ section{animation:rise .5s ease both}
   <div class="brand"><h1>Painel Investimentos</h1><span class="asof" id="asof">Carregando dados…</span><button class="themebtn" id="themebtn" type="button" title="Tema claro ou escuro" aria-label="Alternar tema claro ou escuro"></button></div>
   <div class="dbar" id="dbar" hidden><span id="dmsg"></span><button id="dbtn" class="primary" type="button"></button></div>
   <nav class="tabs" id="tabs">
-    <a href="#mercado">Visão geral</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#cambio">Câmbio</a><a href="#calc">Calculadora</a>
+    <a href="#mercado">Visão geral</a><a href="#favoritos">Favoritos</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#cambio">Câmbio</a><a href="#calc">Calculadora</a>
   </nav>
 </div></header>
 
@@ -235,6 +241,11 @@ section{animation:rise .5s ease both}
     <div class="panel"><h3>Maiores altas e baixas do dia: EUA</h3><p class="muted small">Entre as 200 maiores empresas por valor de mercado.</p><div id="movUS"></div></div>
   </div>
   <div class="note"><b>Sobre os dados.</b> Esta versão traz uma fotografia do mercado (veja a data no topo), não cotação em tempo real. Fontes: Fundamentus e brapi (B3), Nasdaq (EUA), Yahoo Finance (histórico de 1 ano), Banco Central (Selic, CDI, IPCA, dólar PTAX) e Tesouro Direto (taxas dos títulos). Nada aqui é recomendação de investimento.</div>
+</section>
+
+<section id="v-favoritos" hidden>
+  <div class="hero"><p class="eyebrow">Favoritos</p><h2 class="display">Seus <em>favoritos</em></h2><p class="lede">Marque a estrela ☆ ao lado de uma ação, moeda, índice ou indicador para acompanhá-lo aqui.</p></div>
+  <div class="panel"><div class="tbox"><table id="favt"></table></div><p class="muted small" id="favEmpty" style="margin:12px 0 0"></p></div>
 </section>
 
 <section id="v-b3" hidden>
@@ -473,8 +484,8 @@ function dchg(sym){const s=series(sym);if(!s||s.length<2)return null;return (s[s
 function sparkSVG(sym,w=300,h=64){const s=series(sym);if(!s)return"";const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const pts=s.map((p,i)=>[(i/(s.length-1))*w,h-2-((p[1]-mn)/(mx-mn||1))*(h-4)]);const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join("");const col=up?"var(--up)":"var(--down)";return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`}
 
 // ---------- routing ----------
-const VIEWS=["mercado","b3","eua","acoes","cambio","calc"];
-function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat()}
+const VIEWS=["mercado","favoritos","b3","eua","acoes","cambio","calc"];
+function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
 addEventListener("hashchange",route);
 
 // ---------- overview ----------
@@ -512,9 +523,9 @@ function mkTable(cfg){
   const sel=$("#"+cfg.id+"sec");[...new Set(cfg.data().map(r=>r.s))].sort().forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;sel.appendChild(o)});
   function rows(){const q=$("#"+cfg.id+"q").value.trim().toLowerCase();const sec=sel.value;let r=cfg.data().filter(x=>(!sec||x.s===sec)&&(!q||x.t.toLowerCase().includes(q)||(x.n||"").toLowerCase().includes(q))&&(!cfg.extra||cfg.extra(x)));const c=cfg.cols.find(c=>c.k===st.sort);r.sort((a,b)=>{const va=c.v(a),vb=c.v(b);if(va==null)return 1;if(vb==null)return -1;return(typeof va==="string"?va.localeCompare(vb):va-vb)*st.dir});return r}
   function render(){const r=rows();$("#"+cfg.id+"count").textContent=`${r.length} ações`;const vis=r.slice(0,st.n);
-    $("#"+cfg.id+"t").innerHTML=`<thead><tr>${cfg.cols.map(c=>`<th class="${c.l?"l":""}" data-k="${c.k}" title="${esc(c.tip||"")}">${c.h}${st.sort===c.k?`<span class="arr"> ${st.dir<0?"▼":"▲"}</span>`:""}</th>`).join("")}</tr></thead><tbody>${vis.map(x=>`<tr data-t="${esc(x.t)}" data-m="${cfg.m}">${cfg.cols.map(c=>c.r(x)).join("")}</tr>`).join("")}</tbody>`;
+    $("#"+cfg.id+"t").innerHTML=`<thead><tr><th class="fv"></th>${cfg.cols.map(c=>`<th class="${c.l?"l":""}" data-k="${c.k}" title="${esc(c.tip||"")}">${c.h}${st.sort===c.k?`<span class="arr"> ${st.dir<0?"▼":"▲"}</span>`:""}</th>`).join("")}</tr></thead><tbody>${vis.map(x=>`<tr data-t="${esc(x.t)}" data-m="${cfg.m}"><td class="fv">${starBtn(cfg.m,x.t)}</td>${cfg.cols.map(c=>c.r(x)).join("")}</tr>`).join("")}</tbody>`;
     $("#"+cfg.id+"shown").textContent=`Mostrando ${vis.length} de ${r.length}`;$("#"+cfg.id+"more").hidden=vis.length>=r.length}
-  $("#"+cfg.id+"t").addEventListener("click",e=>{const th=e.target.closest("th");if(th){const k=th.dataset.k;if(st.sort===k)st.dir*=-1;else{st.sort=k;st.dir=cfg.cols.find(c=>c.k===k).l?1:-1}render()}});
+  $("#"+cfg.id+"t").addEventListener("click",e=>{const th=e.target.closest("th");if(th&&th.dataset.k){const k=th.dataset.k;if(st.sort===k)st.dir*=-1;else{st.sort=k;st.dir=cfg.cols.find(c=>c.k===k).l?1:-1}render()}});
   ["q","sec","liq"].forEach(x=>{const el=$("#"+cfg.id+x);el&&el.addEventListener("input",()=>{st.n=100;render()})});
   $("#"+cfg.id+"more").addEventListener("click",()=>{st.n+=200;render()});
   render();
@@ -545,7 +556,7 @@ const fxInfo=t=>FX.find(f=>f[0]===t||(t==="BRL=X"&&f[0]==="USDBRL=X"));
 function renderFX(){const list=FX.map(f=>({f,s:fxSym(f[0])})).filter(x=>x.s);
   if(!list.length){$("#fxCards").innerHTML=`<p class="muted">As cotações de câmbio chegam na próxima atualização automática.</p>`;return}
   $("#fxCards").innerHTML=list.slice(0,4).map(({f,s})=>{const h=H[s],d=dchg(s),y=retOver(s,365);return `<div class="panel idx" data-t="${s}" data-m="fx" style="cursor:pointer"><div class="lbl">${f[1]} · ${f[2]}</div><div class="val">${fxR(h.p)}</div><div class="chg"><span class="${cls(d)}">Dia ${pct(d)}</span><span class="${cls(y)}">12 meses ${pct(y,1)}</span></div>${sparkSVG(s)}</div>`}).join("");
-  $("#fxt").innerHTML=`<thead><tr><th>Moeda</th><th class="n">Em R$</th><th class="n">Dia</th><th class="n">1 mês</th><th class="n">No ano</th><th class="n">12 meses</th></tr></thead><tbody>${list.map(({f,s})=>`<tr data-t="${s}" data-m="fx"><td><span class="fxcode">${f[2]}</span> ${f[1]}</td><td class="n">${fxR(H[s].p)}</td><td class="n">${pill(dchg(s))}</td><td class="n">${pill(retOver(s,30))}</td><td class="n">${pill(ytd(s))}</td><td class="n">${pill(retOver(s,365))}</td></tr>`).join("")}</tbody>`;
+  $("#fxt").innerHTML=`<thead><tr><th class="fv"></th><th>Moeda</th><th class="n">Em R$</th><th class="n">Dia</th><th class="n">1 mês</th><th class="n">No ano</th><th class="n">12 meses</th></tr></thead><tbody>${list.map(({f,s})=>`<tr data-t="${s}" data-m="fx"><td class="fv">${starBtn("fx",s)}</td><td><span class="fxcode">${f[2]}</span> ${f[1]}</td><td class="n">${fxR(H[s].p)}</td><td class="n">${pill(dchg(s))}</td><td class="n">${pill(retOver(s,30))}</td><td class="n">${pill(ytd(s))}</td><td class="n">${pill(retOver(s,365))}</td></tr>`).join("")}</tbody>`;
   const u=fxSym("USDBRL=X"),e=fxSym("EURBRL=X");
   if(u)$("#fxLede").innerHTML=`Dólar a <b>${fxR(H[u].p)}</b> (${`<b class="${cls(dchg(u))}">${pct(dchg(u))}</b>`} no dia)${e?`, euro a <b>${fxR(H[e].p)}</b>`:""}. Em 12 meses o dólar ${retOver(u,365)>=0?"subiu":"caiu"} <b class="${cls(retOver(u,365))}">${pct(Math.abs(retOver(u,365)),1).replace("+","")}</b> contra o real.`;
   const opts=`<option value="BRL">BRL · Real brasileiro</option>`+list.map(({f})=>`<option value="${f[2]}">${f[2]} · ${f[1]}</option>`).join("");
@@ -642,6 +653,23 @@ document.addEventListener("pointermove",e=>{if(!CHART||!$("#chartsvg"))return;co
 document.addEventListener("pointerup",e=>{if(!SEL.drag)return;SEL.drag=false;const i=chIdx(e);
   if(!SEL.moved){if(SEL.pend){SEL.b=i}else{SEL.a=i;SEL.b=null}drawSel()}});
 document.addEventListener("pointerleave",()=>drawHover(null));
+// ---------- Favoritos (guardados neste navegador) ----------
+let FAV=new Set(store.get("favs",[]));
+function starBtn(m,t){const k=m+"|"+t,on=FAV.has(k);return `<button type="button" class="star" data-fav="${esc(k)}" aria-pressed="${on}" title="${on?"Remover dos favoritos":"Adicionar aos favoritos"}" aria-label="${on?"Remover dos favoritos":"Adicionar aos favoritos"}">${on?"★":"☆"}</button>`}
+function toggleFav(k){if(FAV.has(k))FAV.delete(k);else FAV.add(k);store.set("favs",[...FAV]);const on=FAV.has(k);
+  document.querySelectorAll(`[data-fav="${CSS.escape(k)}"]`).forEach(b=>{b.setAttribute("aria-pressed",on);b.textContent=on?"★":"☆";b.title=on?"Remover dos favoritos":"Adicionar aos favoritos"});
+  if(!$("#v-favoritos").hidden)renderFav()}
+function renderFav(){const rows=[];
+  for(const k of FAV){const [m,t]=k.split("|");let name,price,d=null,m1=null,y1=null;
+    if(m==="br"||m==="us"){const r=(m==="br"?BR:US).find(x=>x.t===t);if(!r)continue;name=r.n;price=m==="br"?"R$ "+fmt(r.p):usd(r.p);d=r.c;m1=retOver(t,30);y1=retOver(t,365)}
+    else if(m==="fx"){const f=fxInfo(t);if(!f||!H[t])continue;name=f[1];price=fxR(H[t].p);d=dchg(t);m1=retOver(t,30);y1=retOver(t,365)}
+    else if(m==="idx"){if(!H[t])continue;name=IDXN[t]||t;price=fmt(H[t].p,0)+" pts";d=dchg(t);m1=retOver(t,30);y1=retOver(t,365)}
+    else if(m==="macro"){const M=MACROS[t];if(!M)continue;name=M[1];const v={selic:MACRO.selic,cdi:MACRO.cdi,ipca:MACRO.ipca12,juro:((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100,poup:(Math.pow(1+MACRO.poupMes/100,12)-1)*100,ptax:null}[t];price=t==="ptax"?"R$ "+fmt(MACRO.ptax,4):fmt(v)+"%"}
+    else continue;
+    const lbl=m==="fx"?fxInfo(t)[2]:m==="idx"?(IDXN[t]||t):m==="macro"?MACROS[t][0]:t;
+    rows.push(`<tr data-t="${esc(t)}" data-m="${m}"><td class="fv">${starBtn(m,t)}</td><td class="t">${esc(lbl)}</td><td class="nm">${esc(name||"")}</td><td class="n">${price}</td><td class="n">${m==="macro"?"–":pill(d)}</td><td class="n">${m==="macro"?"–":pill(m1)}</td><td class="n">${m==="macro"?"–":pill(y1)}</td></tr>`)}
+  $("#favt").innerHTML=rows.length?`<thead><tr><th class="fv"></th><th>Ativo</th><th>Nome</th><th class="n">Preço</th><th class="n">Dia</th><th class="n">1 mês</th><th class="n">12 meses</th></tr></thead><tbody>${rows.join("")}</tbody>`:"";
+  $("#favEmpty").textContent=rows.length?"Clique num favorito para abrir o gráfico. Os favoritos ficam salvos neste navegador.":"Você ainda não tem favoritos. Abra uma ação, moeda ou indicador e clique na estrela ☆, ou marque direto nas tabelas das abas Bolsa Brasil, Bolsa EUA e Câmbio."}
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
 function perfBtn(k,l,v,on,f){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":(f||(x=>pct(x,1)))(v)}</button>`}
@@ -660,7 +688,7 @@ function openDetail(t,m){
   else if(m==="idx"){kv.push(["Índice",esc(r.n)],["Pontos",fmt(r.p,0)])}
   else if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
-  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":m==="idx"?r.n:t)}</span><span class="muted">${esc(m==="idx"?(t==="^BVSP"?"B3 · Brasil":"Bolsa dos EUA"):r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
+  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":m==="idx"?r.n:t)}</span><span class="muted">${esc(m==="idx"?(t==="^BVSP"?"B3 · Brasil":"Bolsa dos EUA"):r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}${starBtn(m,t)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
   <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k])).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,"y1")}</div></div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
@@ -684,7 +712,7 @@ function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
     const rg=[["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["y5","5 anos"],["max",cs&&cs.pts[0][0]<Date.now()-3700*864e5?"10 anos":"Tudo"]];
     const chg=k=>{const p=cs&&pointsFor(id,k);if(!p)return null;const a=p[0][1],b=p[p.length-1][1];return mode==="pp"?b-a:(b/a-1)*100};
     const f=mode==="pp"?ppf:(x=>pct(x,1));const last=cs?cs.pts[cs.pts.length-1]:null;
-    $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${M[0]}</span><span class="muted">${M[1]}</span><span class="px">${last?vf(last[1]):"–"}</span><button id="dClose" style="margin-left:auto">Fechar</button></div>
+    $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${M[0]}</span><span class="muted">${M[1]}</span><span class="px">${last?vf(last[1]):"–"}</span>${starBtn("macro",key)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
     ${cs?`<div class="perf" id="perf">${rg.map(([k,l])=>perfBtn(k,l,chg(k),k==="y5",f)).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(id,vf,"y5")}</div>`:`<p class="muted" style="padding:40px 0;text-align:center">O histórico deste indicador chega na próxima atualização automática.</p>`}</div>
     <div class="panel"><h3>Sobre</h3><div class="kv"><div>Valor atual</div><div>${last?vf(last[1]):"–"}</div>${last?`<div>Data</div><div>${new Date(last[0]).toLocaleDateString("pt-BR",{timeZone:"UTC"})}</div>`:""}<div>Fonte</div><div>Banco Central (SGS)</div></div>
     <p class="muted small" style="margin-bottom:0">${mode==="pp"?"As variações dos cartões estão em pontos percentuais (p.p.): diferença entre a taxa no fim e no começo do período.":"Variação percentual da cotação no período."}</p></div></div>`;
@@ -695,7 +723,7 @@ function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
 function closeDetail(){CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
 $("#modal").addEventListener("click",e=>{if(e.target.isConnected&&!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
-document.addEventListener("click",e=>{if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
+document.addEventListener("click",e=>{const sb=e.target.closest("[data-fav]");if(sb){e.preventDefault();toggleFav(sb.dataset.fav);return}if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
 function segs(id,cb){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)})}
 segs("#hmMkt",v=>{hm.m=v;renderHeat()});segs("#hmPer",v=>{hm.p=v;renderHeat()});
 $("#hmq").addEventListener("keydown",e=>{if(e.key==="Enter"){const t=e.target.value.trim().toUpperCase();openDetail(t,BR.some(x=>x.t===t)?"br":"us")}});
