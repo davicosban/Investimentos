@@ -152,6 +152,12 @@ th .arr{color:var(--accent)}
 .dhead .tk{font-family:var(--f-display);font-size:44px;line-height:1}
 .dhead .px{font-family:var(--f-num);font-size:22px;font-weight:600}
 .chart{width:100%;height:260px;display:block}
+.chartbox{margin-top:6px}.chartbox .chart{cursor:crosshair;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.chart.selon .base{opacity:.35}
+.chart .hovt{font-family:var(--f-mono);font-size:11.5px;fill:var(--ink)}
+.selinfo{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;min-height:34px;font-size:13px;font-family:var(--f-mono);margin:10px 0 2px}
+.selinfo .muted{font-family:var(--f-body)}
+.selinfo .mini{padding:4px 12px;font-size:12px;margin-left:auto}
 .kv{display:grid;grid-template-columns:1fr auto;gap:0 12px;font-size:13px}
 .kv div{padding:7px 0;border-bottom:1px solid var(--line)}
 .kv div:nth-child(odd){color:var(--muted)}
@@ -511,7 +517,36 @@ function chartSVG(sym,cur){const s=series(sym);if(!s)return`<p class="muted">Sem
   const months=[];let lm=-1;s.forEach((p,i)=>{const dt=new Date(p[0]*864e5);const m=dt.getUTCMonth();if(m!==lm){lm=m;if(i>5&&i<s.length-5)months.push([i,dt])}});
   g+=months.filter((_,k)=>k%2===0).map(([i,dt])=>`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${dt.toLocaleDateString("pt-BR",{month:"short",year:"2-digit",timeZone:"UTC"})}</text>`).join("");
   const li=s.length-1;
-  return `<svg class="chart" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)} em 12 meses">${g}<path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></svg>`}
+  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,cur:cur||(v=>fmt(v))};
+  return `<div class="chartbox"><div class="selinfo" id="selinfo"><span class="muted">Clique e arraste no gráfico (ou clique no início e depois no fim) para ver a variação de um período.</span></div>
+  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)} em 12 meses">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg></div>`}
+// ---------- Seleção de período no gráfico ----------
+let CHART=null,SEL={a:null,b:null,drag:false,moved:false};
+function chIdx(e){const c=CHART,svg=$("#chartsvg"),r=svg.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*c.W;
+  return Math.max(0,Math.min(c.s.length-1,Math.round((x-c.pl)/(c.W-c.pl-c.pr)*(c.s.length-1))))}
+const dfmt=d=>new Date(d*864e5).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",timeZone:"UTC"});
+function drawSel(){const c=CHART,g=$("#selg"),svg=$("#chartsvg"),info=$("#selinfo");if(!c||!g)return;
+  if(SEL.a==null||SEL.b==null||SEL.a===SEL.b){g.innerHTML=SEL.a!=null?`<line x1="${c.X(SEL.a)}" x2="${c.X(SEL.a)}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".6"/><circle cx="${c.X(SEL.a)}" cy="${c.Y(c.s[SEL.a][1])}" r="4.5" fill="var(--ink)"/>`:"";svg.classList.remove("selon");
+    if(SEL.a!=null)info.innerHTML=`<span><b>${dfmt(c.s[SEL.a][0])}</b> · ${c.cur(c.s[SEL.a][1])}</span><span class="muted">Agora clique no fim do período.</span>`;return}
+  const a=Math.min(SEL.a,SEL.b),b=Math.max(SEL.a,SEL.b),pa=c.s[a][1],pb=c.s[b][1],ch=(pb/pa-1)*100,up=ch>=0,col=up?"var(--up)":"var(--down)";
+  const seg=c.s.slice(a,b+1).map((p,k)=>(k?"L":"M")+c.X(a+k).toFixed(1)+" "+c.Y(p[1]).toFixed(1)).join("");
+  g.innerHTML=`<rect x="${c.X(a)}" y="${c.pt}" width="${c.X(b)-c.X(a)}" height="${c.Hh-c.pt-c.pb}" fill="${col}" opacity=".12"/><path d="${seg}" fill="none" stroke="${col}" stroke-width="2.5"/>
+    ${[a,b].map(i=>`<line x1="${c.X(i)}" x2="${c.X(i)}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="${col}" stroke-dasharray="3 3"/><circle cx="${c.X(i)}" cy="${c.Y(c.s[i][1])}" r="4.5" fill="${col}"/>`).join("")}`;
+  svg.classList.add("selon");
+  const dias=c.s[b][0]-c.s[a][0];
+  info.innerHTML=`<span><b>${dfmt(c.s[a][0])}</b> → <b>${dfmt(c.s[b][0])}</b> <span class="muted">(${dias} dias)</span></span><span>${c.cur(pa)} → ${c.cur(pb)}</span><span class="pill ${cls(ch)}" style="font-weight:700">${up?"▲":"▼"} ${pct(ch,2)}</span><button type="button" id="selclr" class="mini">Limpar</button>`;
+  $("#selclr").onclick=()=>{SEL={a:null,b:null,drag:false,moved:false};drawSel();$("#selinfo").innerHTML=`<span class="muted">Clique e arraste no gráfico (ou clique no início e depois no fim) para ver a variação de um período.</span>`}}
+function drawHover(i){const c=CHART,g=$("#hovg");if(!g)return;if(i==null){g.innerHTML="";return}
+  const x=c.X(i),y=c.Y(c.s[i][1]),txt=`${dfmt(c.s[i][0])}  ${c.cur(c.s[i][1])}`,w=txt.length*6.6+16,tx=Math.min(Math.max(x-w/2,c.pl),c.W-c.pr-w);
+  g.innerHTML=`<line x1="${x}" x2="${x}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="var(--muted)" opacity=".5"/><circle cx="${x}" cy="${y}" r="3.5" fill="var(--ink)"/><rect x="${tx}" y="${c.pt}" width="${w}" height="20" rx="6" fill="var(--surface2)" stroke="var(--line2)"/><text class="hovt" x="${tx+w/2}" y="${c.pt+14}" text-anchor="middle">${txt}</text>`}
+document.addEventListener("pointerdown",e=>{const svg=e.target.closest&&e.target.closest("#chartsvg");if(!svg||!CHART||e.button>0)return;
+  const i=chIdx(e);SEL.drag=true;SEL.moved=false;SEL.start=i;SEL.pend=(SEL.a!=null&&SEL.b==null);if(!SEL.pend){SEL.a0=SEL.a;SEL.b0=SEL.b}svg.setPointerCapture(e.pointerId);e.preventDefault()});
+document.addEventListener("pointermove",e=>{if(!CHART||!$("#chartsvg"))return;const over=e.target.closest&&e.target.closest("#chartsvg");
+  if(SEL.drag){const i=chIdx(e);if(i!==SEL.start||SEL.moved){if(!SEL.moved){SEL.moved=true;SEL.a=SEL.start}SEL.b=i;drawSel()}drawHover(i);return}
+  drawHover(over?chIdx(e):null)});
+document.addEventListener("pointerup",e=>{if(!SEL.drag)return;SEL.drag=false;const i=chIdx(e);
+  if(!SEL.moved){if(SEL.pend){SEL.b=i}else{SEL.a=i;SEL.b=null}drawSel()}});
+document.addEventListener("pointerleave",()=>drawHover(null));
 function openDetail(t,m){
   const r=(m==="us"?US:BR).find(x=>x.t===t)||(m==="us"?BR:US).find(x=>x.t===t);if(!r)return;m=US.includes(r)?"us":"br";
   const h=H[t];const cur=m==="us"?usd:v=>"R$ "+fmt(v);
@@ -521,13 +556,13 @@ function openDetail(t,m){
   if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
   $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(t)}</span><span class="muted">${esc(r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
-  <div class="perf">${perf.map(([l,v])=>`<div class="${v==null?"na":cls(v)||"na"}"><small>${l}</small>${pct(v,1)}</div>`).join("")}</div>${chartSVG(t)}</div>
+  <div class="perf">${perf.map(([l,v])=>`<div class="${v==null?"na":cls(v)||"na"}"><small>${l}</small>${pct(v,1)}</div>`).join("")}</div>${chartSVG(t,cur)}</div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
-function closeDetail(){$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
-$("#modal").addEventListener("click",e=>{if(!e.target.closest("#modal .panel"))closeDetail()});
+function closeDetail(){CHART=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
+$("#modal").addEventListener("click",e=>{if(e.target.isConnected&&!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
 document.addEventListener("click",e=>{if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
 function segs(id,cb){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.v)})}
