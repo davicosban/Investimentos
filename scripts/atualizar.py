@@ -10,7 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 SITE = sys.argv[1] if len(sys.argv) > 1 else "."
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
-      "Accept": "application/json, text/html, */*", "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"}
+      "Accept": "application/json, text/html, */*", "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      "Cache-Control": "no-cache", "Pragma": "no-cache"}
 
 def get(url, tries=2):
     for i in range(tries):
