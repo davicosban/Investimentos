@@ -9,6 +9,7 @@ import json, re, sys, os, time, html, datetime, urllib.request, urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 SITE = sys.argv[1] if len(sys.argv) > 1 else "."
+RAPIDO = "--rapido" in sys.argv   # rodada de 15 min: só cotações atuais, sem histórico
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
       "Accept": "application/json, text/html, */*", "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
       "Cache-Control": "no-cache", "Pragma": "no-cache"}
@@ -196,7 +197,7 @@ def main():
     except Exception as e:
         us = old_us; log.append(f"Nasdaq FALHOU: {e}")
     # Histórico
-    syms = ["^BVSP", "^GSPC", "^IXIC", "BRL=X"] + [r["t"] + ".SA" for r in br[:100]] + [r["t"] for r in us if r["t"] != "GOOG"][:117]
+    syms = [] if RAPIDO else ["^BVSP", "^GSPC", "^IXIC", "BRL=X"] + [r["t"] + ".SA" for r in br[:100]] + [r["t"] for r in us if r["t"] != "GOOG"][:117]
     hist = {}
     ERR = []
     def one(s):
@@ -208,6 +209,7 @@ def main():
             key = s.replace(".SA", "")
             if h: hist[key] = h
             elif key in old_h: hist[key] = old_h[key]
+    if RAPIDO: hist.update(old_h)
     okfx = 0
     try:   # Banco Central Europeu via Frankfurter: 1 pedido para todas as moedas (sem ARS, CLP, UYU)
         ini = (datetime.date.today() - datetime.timedelta(days=366)).isoformat()
@@ -223,7 +225,7 @@ def main():
             okfx += 1
     except Exception as e:
         log.append(f"Câmbio Frankfurter FALHOU: {str(e)[:120]}")
-    for sym in FX:   # o que faltar: tenta a AwesomeAPI (pode bloquear o GitHub)
+    for sym in ([] if RAPIDO else FX):   # o que faltar: tenta a AwesomeAPI (pode bloquear o GitHub)
         if sym in hist: continue
         try:
             hist[sym] = awesome(sym[:3]); okfx += 1
@@ -261,7 +263,7 @@ def main():
             if fl >= 3: break
         time.sleep(1)
     log.append(f"Yahoo histórico completo: {okl} ativos nesta execução, faltam {max(0, len(fila) - okl)}" + (f" (erro: {errl})" if errl else ""))
-    time.sleep(20)
+    if not RAPIDO: time.sleep(20)
     ok = 0; falhas = 0; erro1 = ""
     for sym in syms:
         try:
@@ -295,14 +297,14 @@ def main():
     except Exception as e:
         log.append(f"BCB FALHOU: {e}")
     try:
-        save("macrohist.json", macrohist()); log.append("BCB histórico: ok")
+        if not RAPIDO: save("macrohist.json", macrohist()); log.append("BCB histórico: ok")
     except Exception as e:
         log.append(f"BCB histórico FALHOU: {e}")
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
     save("asof.json", {"asof": f"{now:%d/%m/%Y %H:%M}"})
     s = re.sub(r'(let|const) ASOF="[^"]*";', lambda m: f'{m.group(1)} ASOF="{now:%d/%m/%Y %H:%M}";', s, count=1)
     s = re.sub(r'\$\("#asof"\)\.textContent=`Dados de \$\{ASOF\}[^`]*`',
-               '$("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`', s, count=1)
+               '$("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`', s, count=1)
     for marca in ("const PRODUTOS=[", " ASOF=", "function renderOverview", "</script>"):
         if marca not in s: raise SystemExit(f"index.html ficaria quebrado (falta {marca}); nada foi salvo")
     open(idx, "w", encoding="utf-8").write(s)

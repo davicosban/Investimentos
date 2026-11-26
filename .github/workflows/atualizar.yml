@@ -2,7 +2,8 @@ name: Atualizar dados e publicar
 
 on:
   schedule:
-    - cron: "30 21 * * 1-5"   # 18h30 em Brasília, dias úteis
+    - cron: "30 21 * * 1-5"   # 18h30 em Brasília, dias úteis: rodada completa (com histórico)
+    - cron: "*/15 13-20 * * 1-5"   # a cada 15 min das 10h às 17h45 em Brasília: só cotações
   workflow_dispatch:
   push:
     branches: [main]
@@ -16,6 +17,9 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
+    concurrency:
+      group: dados-${{ github.event_name == 'push' && github.run_id || 'robo' }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,7 +29,7 @@ jobs:
           python-version: "3.12"
       - name: Buscar dados novos
         if: github.event_name != 'push'
-        run: python3 scripts/atualizar.py site
+        run: python3 scripts/atualizar.py site ${{ github.event.schedule == '*/15 13-20 * * 1-5' && '--rapido' || '' }}
       - name: Salvar dados no repositório
         if: github.event_name != 'push'
         run: |

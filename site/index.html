@@ -804,7 +804,7 @@ async function getData(){
   try{const c=await readCache();if(c){if(c["macro.json"])Object.assign(MACRO,c["macro.json"]);if(c["macrohist.json"]){MH=c["macrohist.json"];buildMacro()}if(c["asof.json"])ASOF=c["asof.json"].asof;$("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;calcTop();calcRF();calcCmp();calcEQ();renderDsRF();
       const [d,h]=ASOF.split(" ");const [dd,mm,yy]=d.split("/");const age=(Date.now()-new Date(`${yy}-${mm}-${dd}T${h||"00:00"}:00-03:00`))/36e5;
       dbar(`App de desktop · dados de ${ASOF}`,"Atualizar agora",refreshDesktop);
-      setTimeout(checkRemote,800);setInterval(checkRemote,30*60*1000);
+      setTimeout(checkRemote,800);setInterval(checkRemote,10*60*1000);
       return [c["br.json"],c["us.json"],c["hist.json"]]}}catch(e){}
   setTimeout(refreshDesktop,300);return bundled()}
 
@@ -812,11 +812,13 @@ fillProducts();calcTop();calcRF();calcCmp();calcJC();calcEQ();calcMeta();renderD
 const ct=store.get("ctab","top");if(ct!=="top")$(`#ctabs button[data-v="${ct}"]`)?.click();
 if(!location.hash){const t=store.get("tab","mercado");if(t!=="mercado")location.hash=t}
 route();
+// Site/app instalado pelo navegador: confere a cada 5 min se há dados novos e recarrega sozinho
+if(location.protocol==="https:"&&/github\.io$/.test(location.hostname)){setInterval(async()=>{if(document.hidden||!$("#modal").hidden)return;try{const j=await fetch("asof.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json());if(j.asof&&j.asof!==ASOF)location.reload()}catch(e){}},5*60*1000)}
 getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
     {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
