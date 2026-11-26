@@ -154,7 +154,9 @@ def main():
         d12 = i12["data"]; ip_lbl = f"12 meses até {mes[int(d12[3:5]) - 1]}/{d12[6:]}"
         macro = (f'const MACRO={{selic:{selic},selicData:"meta vigente, BCB",cdi:{float(cdi["valor"])},cdiData:"{cdi["data"]}",'
                  f'ipca12:{float(i12["valor"])},ipcaData:"{ip_lbl}",ptax:{float(usd["valor"])},ptaxData:"{usd["data"]}",poupMes:{poup},\n ipcaM:{json.dumps(ipm)}}};')
-        s = re.sub(r"const MACRO=\{.*?\}\};", lambda m: macro, s, count=1, flags=re.S)
+        new_s, n = re.subn(r"const MACRO=\{[^;]*?\]\]\};", lambda m: macro, s, count=1)
+        if n != 1: raise ValueError("bloco MACRO não encontrado no index.html")
+        s = new_s
         log.append(f"BCB: Selic {selic}, CDI {cdi['valor']}, IPCA12 {i12['valor']}")
     except Exception as e:
         log.append(f"BCB FALHOU: {e}")
@@ -162,6 +164,8 @@ def main():
     s = re.sub(r'const ASOF="[^"]*";', f'const ASOF="{now:%d/%m/%Y %H:%M}";', s, count=1)
     s = re.sub(r'\$\("#asof"\)\.textContent=`Dados de \$\{ASOF\}[^`]*`',
                '$("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`', s, count=1)
+    for marca in ("const PRODUTOS=[", "const ASOF=", "function renderOverview", "</script>"):
+        if marca not in s: raise SystemExit(f"index.html ficaria quebrado (falta {marca}); nada foi salvo")
     open(idx, "w", encoding="utf-8").write(s)
     print("\n".join(log))
 
