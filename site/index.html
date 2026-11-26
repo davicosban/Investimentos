@@ -208,6 +208,27 @@ svg text{fill:var(--muted);font-family:var(--f-num);font-size:10px}
 section{animation:rise .5s ease both}
 @keyframes rise{from{transform:translateY(8px)}to{transform:none}}
 @media (max-width:640px){.idx .val{font-size:38px}.panel{padding:16px}.spark{width:calc(100% + 32px);margin:10px -16px 0}}
+.dclose{margin-left:auto}.dclose .x{display:none}
+@media (max-width:640px){
+ .modal{padding:max(10px,env(safe-area-inset-top,0px)) 8px 12px}
+ .modal .panel{padding:14px 12px}
+ .dhead{gap:2px 10px;align-items:center}
+ .dhead .tk{font-size:28px;flex:1 1 auto}
+ .dhead>.muted{order:5;flex-basis:100%;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .dhead .px{font-size:17px;order:6}
+ .dhead .pill,.dhead [data-fav]{order:7}
+ .dclose{order:2;margin-left:0;width:34px;height:34px;padding:0;border-radius:50%;display:grid;place-items:center}
+ .dclose .lbl{display:none}.dclose .x{display:inline;font-size:15px;line-height:1}
+ .perf{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:8px -12px 0;padding:3px 12px 3px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ .perf::-webkit-scrollbar{display:none}
+ .perf button:hover{transform:none}
+ .perf button,.perf div{flex:0 0 auto;padding:5px 10px;font-size:12px;border-radius:999px}
+ .perf button small,.perf div small{font-size:10.5px}
+ .selinfo .hint{display:none}
+ .selinfo{min-height:0;margin:6px 0 0;font-size:12px}
+ .chartbox .chart{height:auto}
+ .chart .hovt{font-size:11px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .themebtn{flex:none;width:34px;height:34px;border-radius:999px;display:grid;place-items:center;cursor:pointer;color:var(--ink);background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow);padding:0;transition:background .2s}
 .brand{display:grid;grid-template-columns:auto auto 1fr;justify-items:start;justify-content:start;align-items:center;column-gap:12px;row-gap:2px}.brand .acct{font-size:12.5px;padding:6px 12px;display:flex;align-items:center;gap:6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -607,7 +628,7 @@ function tfmt(ms,span,long){const d=new Date(ms);
   return String(d.getUTCFullYear())}
 function chartSVG(sym,cur,k="y1"){const s=pointsFor(sym,k);
   if(!s)return k==="max"?`<p class="muted" style="padding:40px 0;text-align:center">O histórico completo deste ativo ainda não está disponível nesta versão.</p>`:`<p class="muted">Sem histórico para este ativo nesta versão. A variação do dia e os indicadores estão ao lado.</p>`;
-  const W=800,Hh=260,pl=8,pr=58,pt=10,pb=22;const ys=s.map(p=>p[1]);if(s.pc)ys.push(s.pc);const mn=Math.min(...ys),mx=Math.max(...ys);const up=s.pc?s[s.length-1][1]>=s.pc:ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
+  const mob=innerWidth<=640,W=mob?Math.max(280,Math.round(($("#chartbox")||{}).clientWidth||innerWidth-34)):800,Hh=mob?Math.max(260,Math.min(460,Math.round(innerHeight*.52))):260,pl=mob?2:8,pr=mob?46:58,pt=10,pb=22;const ys=s.map(p=>p[1]);if(s.pc)ys.push(s.pc);const mn=Math.min(...ys),mx=Math.max(...ys);const up=s.pc?s[s.length-1][1]>=s.pc:ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
   // Dia: eixo pelo horário real (10h às 18h), como no Google; demais períodos: um ponto por pregão
   let tx=null;if(k==="d1"){const d=new Date(s[0][0]);const at=(h,m)=>Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h,m);tx=[Math.min(s[0][0],at(13,0)),Math.max(s[s.length-1][0],at(21,0))]}
   const X=tx?(i=>pl+((s[i][0]-tx[0])/(tx[1]-tx[0]||1))*(W-pl-pr)):(i=>pl+(i/(s.length-1))*(W-pl-pr)),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
@@ -619,12 +640,12 @@ function chartSVG(sym,cur,k="y1"){const s=pointsFor(sym,k);
     const bk=ms=>{const d=new Date(ms);return span<=1.6*864e5?d.getHours():span<=75*864e5?d.toDateString():span<=420*864e5?d.getUTCFullYear()*12+d.getUTCMonth():d.getUTCFullYear()};
     let idx=[];for(let i=1;i<s.length;i++)if(bk(s[i][0])!==bk(s[i-1][0]))idx.push(i);
     const lo=(s.length-1)*.03,hi=(s.length-1)*.97;idx=idx.filter(i=>i>=lo&&i<=hi);
-    if(idx.length>7){const st=Math.ceil(idx.length/7);idx=idx.filter((_,k)=>(idx.length-1-k)%st===0)}
+    const nl=mob?4:7;if(idx.length>nl){const st=Math.ceil(idx.length/nl);idx=idx.filter((_,k)=>(idx.length-1-k)%st===0)}
     if(idx.length<2)idx=[0.15,0.5,0.85].map(f=>Math.round(f*(s.length-1)));
     idx.forEach(i=>{g+=`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${tfmt(s[i][0],span)}</text>`})}
   const li=s.length-1;
   CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,tx,cur:cur||(v=>fmt(v)),mode:CUSTOM[sym]?CUSTOM[sym].mode:"pct"};
-  return `<div class="selinfo" id="selinfo"><span class="muted">${SELHINT}</span></div>
+  return `<div class="selinfo" id="selinfo"><span class="muted hint">${SELHINT}</span></div>
   <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${X(0)} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
 const SELHINT="Clique num cartão acima para mudar o período. Clique e arraste no gráfico (ou clique no início e no fim) para ver a variação de um trecho.";
 // ---------- Seleção de período no gráfico ----------
@@ -643,7 +664,7 @@ function drawSel(){const c=CHART,g=$("#selg"),svg=$("#chartsvg"),info=$("#selinf
   svg.classList.add("selon");
   const dias=Math.round((c.s[b][0]-c.s[a][0])/864e5),dur=dias>=1?`(${dias} ${dias===1?"dia":"dias"})`:"";
   info.innerHTML=`<span><b>${dfmt(c.s[a][0])}</b> → <b>${dfmt(c.s[b][0])}</b> <span class="muted">${dur}</span></span><span>${c.cur(pa)} → ${c.cur(pb)}</span><span class="pill ${cls(ch)}" style="font-weight:700">${up?"▲":"▼"} ${c.mode==="pp"?ppf(ch):pct(ch,2)}</span><button type="button" id="selclr" class="mini">Limpar</button>`;
-  $("#selclr").onclick=()=>{SEL={a:null,b:null,drag:false,moved:false};drawSel();$("#selinfo").innerHTML=`<span class="muted">${SELHINT}</span>`}}
+  $("#selclr").onclick=()=>{SEL={a:null,b:null,drag:false,moved:false};drawSel();$("#selinfo").innerHTML=`<span class="muted hint">${SELHINT}</span>`}}
 function drawHover(i){const c=CHART,g=$("#hovg");if(!g)return;if(i==null){g.innerHTML="";return}
   const x=c.X(i),y=c.Y(c.s[i][1]),txt=`${dfmt(c.s[i][0])}  ${c.cur(c.s[i][1])}`,w=txt.length*6.6+16,tx=Math.min(Math.max(x-w/2,c.pl),c.W-c.pr-w);
   g.innerHTML=`<line x1="${x}" x2="${x}" y1="${c.pt}" y2="${c.Hh-c.pb}" stroke="var(--muted)" opacity=".5"/><circle cx="${x}" cy="${y}" r="3.5" fill="var(--ink)"/><rect x="${tx}" y="${c.pt}" width="${w}" height="20" rx="6" fill="var(--surface2)" stroke="var(--line2)"/><text class="hovt" x="${tx+w/2}" y="${c.pt+14}" text-anchor="middle">${txt}</text>`}
@@ -694,6 +715,7 @@ async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let 
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
 function perfBtn(k,l,v,on,f){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":(f||(x=>pct(x,1)))(v)}</button>`}
+addEventListener("resize",()=>{clearTimeout(window._rz);window._rz=setTimeout(()=>{if(DET&&$("#chartbox"))showRange()},250)});
 function showRange(){if(!DET)return;SEL={a:null,b:null,drag:false,moved:false};$("#chartbox").innerHTML=chartSVG(DET.t,DET.cur,DET.k)}
 function openDetail(t,m){
   if(m==="macro")return openMacro(t);
@@ -709,7 +731,7 @@ function openDetail(t,m){
   else if(m==="idx"){kv.push(["Índice",esc(r.n)],["Pontos",fmt(r.p,0)])}
   else if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
-  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":m==="idx"?r.n:t)}</span><span class="muted">${esc(m==="idx"?(t==="^BVSP"?"B3 · Brasil":"Bolsa dos EUA"):r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}${starBtn(m,t)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
+  $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":m==="idx"?r.n:t)}</span><span class="muted">${esc(m==="idx"?(t==="^BVSP"?"B3 · Brasil":"Bolsa dos EUA"):r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}${starBtn(m,t)}<button id="dClose" class="dclose" aria-label="Fechar"><span class="lbl">Fechar</span><span class="x">✕</span></button></div>
   <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k])).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,"y1")}</div></div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
@@ -733,7 +755,7 @@ function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
     const rg=[["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["y5","5 anos"],["max",cs&&cs.pts[0][0]<Date.now()-3700*864e5?"10 anos":"Tudo"]];
     const chg=k=>{const p=cs&&pointsFor(id,k);if(!p)return null;const a=p[0][1],b=p[p.length-1][1];return mode==="pp"?b-a:(b/a-1)*100};
     const f=mode==="pp"?ppf:(x=>pct(x,1));const last=cs?cs.pts[cs.pts.length-1]:null;
-    $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${M[0]}</span><span class="muted">${M[1]}</span><span class="px">${last?vf(last[1]):"–"}</span>${starBtn("macro",key)}<button id="dClose" style="margin-left:auto">Fechar</button></div>
+    $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${M[0]}</span><span class="muted">${M[1]}</span><span class="px">${last?vf(last[1]):"–"}</span>${starBtn("macro",key)}<button id="dClose" class="dclose" aria-label="Fechar"><span class="lbl">Fechar</span><span class="x">✕</span></button></div>
     ${cs?`<div class="perf" id="perf">${rg.map(([k,l])=>perfBtn(k,l,chg(k),k==="y5",f)).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(id,vf,"y5")}</div>`:`<p class="muted" style="padding:40px 0;text-align:center">O histórico deste indicador chega na próxima atualização automática.</p>`}</div>
     <div class="panel"><h3>Sobre</h3><div class="kv"><div>Valor atual</div><div>${last?vf(last[1]):"–"}</div>${last?`<div>Data</div><div>${new Date(last[0]).toLocaleDateString("pt-BR",{timeZone:"UTC"})}</div>`:""}<div>Fonte</div><div>Banco Central (SGS)</div></div>
     <p class="muted small" style="margin-bottom:0">${mode==="pp"?"As variações dos cartões estão em pontos percentuais (p.p.): diferença entre a taxa no fim e no começo do período.":"Variação percentual da cotação no período."}</p></div></div>`;
@@ -883,7 +905,7 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
   initCloud().catch(e=>console.warn("conta:",e));
@@ -913,6 +935,5 @@ getData().then(([b,u,h])=>{
   if(!$("#v-acoes").hidden)renderHeat();
 }).catch(e=>{$("#asof").textContent="Não consegui carregar os dados das ações. Recarregue a página.";console.error(e)});
 </script>
-
 </body>
 </html>
