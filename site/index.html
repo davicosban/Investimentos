@@ -581,8 +581,9 @@ function intraLocal(sym){const I=INTRA;if(!I||!I.p||!I.p[sym])return null;const 
   const [y,mo,d]=I.data.split("-").map(Number);const ms=m=>Date.UTC(y,mo-1,d)+(m+180)*6e4;
   const pts=I.m.map((m,i)=>[ms(m),I.p[sym][i]]).filter(p=>p[1]!=null);if(!pts.length)return null;
   const us=!BR.includes(r);const open=us?11*60+30:10*60;
-  if(r&&r.c!=null&&r.p){const pc=r.p/(1+r.c/100);if(pts[0][0]>ms(open))pts.unshift([ms(open),+pc.toFixed(4)])}
-  return pts.length>1?pts:null}
+  if(r&&r.c!=null&&r.p)pts.pc=r.p/(1+r.c/100);   // fechamento de ontem: linha pontilhada, como no Google
+  if(pts.length===1)pts.unshift([ms(open),pts[0][1]]);
+  return pts}
 function maxChange(sym){const w=pointsFor(sym,"max");return w?(w[w.length-1][1]/w[0][1]-1)*100:null}
 function tfmt(ms,span,long){const d=new Date(ms);
   if(span<=1.6*864e5)return d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+(long?" · "+d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}):"");
@@ -593,12 +594,13 @@ function tfmt(ms,span,long){const d=new Date(ms);
   return String(d.getUTCFullYear())}
 function chartSVG(sym,cur,k="y1"){const s=pointsFor(sym,k);
   if(!s)return k==="max"?`<p class="muted" style="padding:40px 0;text-align:center">O histórico completo deste ativo ainda não está disponível nesta versão.</p>`:`<p class="muted">Sem histórico para este ativo nesta versão. A variação do dia e os indicadores estão ao lado.</p>`;
-  const W=800,Hh=260,pl=8,pr=58,pt=10,pb=22;const ys=s.map(p=>p[1]);const mn=Math.min(...ys),mx=Math.max(...ys);const up=ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
+  const W=800,Hh=260,pl=8,pr=58,pt=10,pb=22;const ys=s.map(p=>p[1]);if(s.pc)ys.push(s.pc);const mn=Math.min(...ys),mx=Math.max(...ys);const up=s.pc?s[s.length-1][1]>=s.pc:ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
   // Dia: eixo pelo horário real (10h às 18h), como no Google; demais períodos: um ponto por pregão
-  let tx=null;if(k==="d1"){const t0=s[0][0],d=new Date(t0);const close=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),21,0);tx=[t0,Math.max(s[s.length-1][0],close)]}
+  let tx=null;if(k==="d1"){const d=new Date(s[0][0]);const at=(h,m)=>Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h,m);tx=[Math.min(s[0][0],at(13,0)),Math.max(s[s.length-1][0],at(21,0))]}
   const X=tx?(i=>pl+((s[i][0]-tx[0])/(tx[1]-tx[0]||1))*(W-pl-pr)):(i=>pl+(i/(s.length-1))*(W-pl-pr)),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
   const d=s.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");const span=s[s.length-1][0]-s[0][0];
   let g="";for(let q=0;q<=4;q++){const v=mn+(mx-mn)*q/4;const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,v>=1000?0:2)}</text>`}
+  if(s.pc){const y=Y(s.pc);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-dasharray="2 4" opacity=".8"/><text x="${pl+4}" y="${y-5}" style="fill:var(--muted)">Fech. ant. ${fmt(s.pc)}</text>`}
   if(tx){const d=new Date(tx[0]);for(let h=10;h<=18;h+=2){const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h+3,0);if(t<tx[0]||t>tx[1])continue;const x=pl+((t-tx[0])/(tx[1]-tx[0]))*(W-pl-pr);g+=`<text x="${x}" y="${Hh-6}" text-anchor="${x<pl+20?"start":x>W-pr-20?"end":"middle"}">${h}:00</text>`}}
   else {// rótulos no começo de cada hora/dia/mês/ano, até 7, cobrindo o período inteiro
     const bk=ms=>{const d=new Date(ms);return span<=1.6*864e5?d.getHours():span<=75*864e5?d.toDateString():span<=420*864e5?d.getUTCFullYear()*12+d.getUTCMonth():d.getUTCFullYear()};
@@ -610,7 +612,7 @@ function chartSVG(sym,cur,k="y1"){const s=pointsFor(sym,k);
   const li=s.length-1;
   CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,tx,cur:cur||(v=>fmt(v)),mode:CUSTOM[sym]?CUSTOM[sym].mode:"pct"};
   return `<div class="selinfo" id="selinfo"><span class="muted">${SELHINT}</span></div>
-  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${pl} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
+  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<g class="base"><path d="${d} L${X(li)} ${Hh-pb} L${X(0)} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2"/><circle cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
 const SELHINT="Clique num cartão acima para mudar o período. Clique e arraste no gráfico (ou clique no início e no fim) para ver a variação de um trecho.";
 // ---------- Seleção de período no gráfico ----------
 let CHART=null,SEL={a:null,b:null,drag:false,moved:false};
@@ -832,7 +834,7 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}
