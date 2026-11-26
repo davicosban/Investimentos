@@ -1,5 +1,5 @@
 // Rede primeiro; se estiver sem internet, usa a última cópia salva.
-const CACHE = "painel-v1";
+const CACHE = "painel-v2";
 self.addEventListener("install", e => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
