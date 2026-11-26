@@ -297,54 +297,7 @@ svg text{fill:var(--muted);font-family:var(--f-num);font-size:10px}
 
 <script>
 const MACRO={selic:13.75,selicData:"meta vigente, BCB",cdi:13.65,cdiData:"25/11/2026",ipca12:4.63,ipcaData:"12 meses até out/2026",ptax:5.8825,ptaxData:"25/11/2026",poupMes:0.6721,
- ipcaM:[["11/2025",0.18],["12/2025",0.33],["01/2026",0.33],["02/2026",0.7],["03/2026",0.88],["04/2026",0.67],["05/2026",0.58],["06/2026",0.16],["07/2026",0.07],["08/2026",-0.32],["09/2026",0.82],["10/2026",0.14]]};
-const ASOF="26/11/2026";
-// Tesouro: taxas reais do site do Tesouro Direto em 26/11/2026. Bancos: exemplos ilustrativos.
-const PRODUTOS=[
- {g:3,b:"Tesouro Direto",n:"Tesouro Selic 2031",t:"selic",x:0.1115,ir:"ir",m:52,liq:"Diária (D+0)",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro Reserva 2036",t:"selic",x:0,ir:"ir",m:110,liq:"Diária 24/7 (só Banco do Brasil)",c:0,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro Prefixado 2029",t:"pre",x:14.53,ir:"ir",m:37,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro Prefixado 2032",t:"pre",x:14.92,ir:"ir",m:73,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro Prefixado c/ Juros Semestrais 2037",t:"pre",x:14.91,ir:"ir",m:121,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ 2032",t:"ipca",x:7.72,ir:"ir",m:69,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ 2040",t:"ipca",x:7.41,ir:"ir",m:165,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ 2050",t:"ipca",x:7.39,ir:"ir",m:285,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro IPCA+ c/ Juros Semestrais 2037",t:"ipca",x:7.60,ir:"ir",m:126,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro RendA+ 2030",t:"ipca",x:7.50,ir:"ir",m:277,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:3,b:"Tesouro Direto",n:"Tesouro Educa+ 2030",t:"ipca",x:7.68,ir:"ir",m:97,liq:"Diária, a preço de mercado",c:0.2,real:1},
- {g:1,b:"Nubank",n:"CDB liquidez diária",t:"pos",x:100,ir:"ir",m:24,liq:"Diária"},
- {g:1,b:"Inter",n:"CDB liquidez diária",t:"pos",x:100,ir:"ir",m:24,liq:"Diária"},
- {g:1,b:"PicPay",n:"CDB liquidez diária",t:"pos",x:102,ir:"ir",m:24,liq:"Diária"},
- {g:2,b:"Itaú",n:"CDB DI",t:"pos",x:95,ir:"ir",m:24,liq:"Diária"},
- {g:2,b:"Bradesco",n:"CDB Fácil",t:"pos",x:90,ir:"ir",m:24,liq:"Diária"},
- {g:2,b:"Banco do Brasil",n:"CDB DI",t:"pos",x:92,ir:"ir",m:24,liq:"Diária"},
- {g:2,b:"Caixa",n:"CDB pós",t:"pos",x:95,ir:"ir",m:24,liq:"Diária"},
- {g:2,b:"Santander",n:"CDB DI",t:"pos",x:95,ir:"ir",m:24,liq:"Diária"},
- {g:2,b:"BTG Pactual",n:"CDB 2 anos",t:"pos",x:105,ir:"ir",m:24,liq:"No vencimento"},
- {g:1,b:"C6 Bank",n:"CDB 2 anos",t:"pos",x:108,ir:"ir",m:24,liq:"No vencimento"},
- {g:1,b:"Banco XP",n:"CDB 3 anos",t:"pos",x:110,ir:"ir",m:36,liq:"No vencimento"},
- {g:1,b:"Sofisa Direto",n:"CDB 1 ano",t:"pos",x:110,ir:"ir",m:12,liq:"No vencimento"},
- {g:1,b:"Banco Pine",n:"CDB prefixado 3 anos",t:"pre",x:15.2,ir:"ir",m:36,liq:"No vencimento"},
- {g:1,b:"BMG",n:"CDB IPCA+ 5 anos",t:"ipca",x:7.8,ir:"ir",m:60,liq:"No vencimento"},
- {g:1,b:"Inter",n:"LCI 1 ano",t:"pos",x:90,ir:"isento",m:12,liq:"No vencimento (carência mín. 9 meses)"},
- {g:2,b:"Caixa",n:"LCI 1 ano",t:"pos",x:89,ir:"isento",m:12,liq:"No vencimento"},
- {g:1,b:"Daycoval",n:"LCI 1 ano",t:"pos",x:92,ir:"isento",m:12,liq:"No vencimento"},
- {g:2,b:"BTG Pactual",n:"LCA 1 ano",t:"pos",x:94,ir:"isento",m:12,liq:"No vencimento"},
- {g:2,b:"Itaú",n:"LCA",t:"pos",x:88,ir:"isento",m:12,liq:"No vencimento"},
- {g:2,b:"Banco do Brasil",n:"LCA DI",t:"pos",x:90,ir:"isento",m:12,liq:"No vencimento"},
- {g:2,b:"Qualquer banco",n:"Poupança",t:"poup",x:0,ir:"isento",m:12,liq:"Diária (rende no aniversário)"}
-];
-
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmt=(v,d=2)=>v==null||!isFinite(v)?"–":v.toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
-const brl=v=>v==null||!isFinite(v)?"–":v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-const usd=v=>v==null?"–":"US$ "+fmt(v);
-const pct=(v,d=2)=>v==null||!isFinite(v)?"–":(v>0?"+":"")+fmt(v,d)+"%";
-const cls=v=>v==null?"":v>0?"up":v<0?"down":"";
-const pill=v=>`<span class="pill ${cls(v)}">${pct(v)}</span>`;
-const big=v=>{if(v==null)return"–";const a=Math.abs(v);return a>=1e12?fmt(v/1e12,2)+" tri":a>=1e9?fmt(v/1e9,1)+" bi":a>=1e6?fmt(v/1e6,1)+" mi":a>=1e3?fmt(v/1e3,0)+" mil":fmt(v,0)};
-const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+ ipcaM:[["11/2025", 0.18], ["12/2025", 0.33], ["01/2026", 0.33], ["02/2026", 0.7], ["03/2026", 0.88], ["04/2026", 0.67], ["05/2026", 0.58], ["06/2026", 0.16], ["07/2026", 0.07], ["08/2026", -0.32], ["09/2026", 0.82], ["10/2026", 0.14]]};
 
 let BR=[],US=[],H={};
 // ---------- history helpers ----------
@@ -536,7 +489,7 @@ Promise.all(["br.json","us.json","hist.json"].map(f=>fetch(f).then(r=>{if(!r.ok)
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} · atualização automática diária · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`;
   renderOverview();
   mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
     {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
