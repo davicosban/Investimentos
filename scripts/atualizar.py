@@ -154,6 +154,25 @@ def macrohist():
         time.sleep(0.5)
     return out
 
+def intraday_local(br, us):
+    """Monta o gráfico do dia com as próprias rodadas (~16 min): guarda a cotação de cada ativo a cada rodada."""
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
+    hoje = now.strftime("%Y-%m-%d"); minuto = now.hour * 60 + now.minute
+    path = os.path.join(SITE, "intraday.json")
+    try: d = json.load(open(path))
+    except Exception: d = {}
+    if d.get("data") != hoje: d = {"data": hoje, "m": [], "p": {}}
+    if d["m"] and minuto - d["m"][-1] < 5: return   # rodada repetida em menos de 5 min
+    ativos = [r for r in br[:300]] + sorted(us, key=lambda r: -(r.get("mc") or 0))[:300]
+    n = len(d["m"]); d["m"].append(minuto)
+    for r in ativos:
+        if r.get("p") is None: continue
+        serie = d["p"].setdefault(r["t"], [None] * n)
+        serie += [None] * (n - len(serie)); serie.append(r["p"])
+    for t, serie in d["p"].items():
+        if len(serie) < n + 1: serie.append(None)
+    json.dump(d, open(path, "w"), separators=(",", ":"))
+
 def main():
     old_br, old_us, old_h = load("br.json", []), load("us.json", []), load("hist.json", {})
     # Brasil
@@ -239,6 +258,8 @@ def main():
         h = hist.get(r["t"])
         if h and r["c"] is None and len(h["c"]) > 1: r["c"] = round((h["c"][-1] / h["c"][-2] - 1) * 100, 2)
     save("br.json", br); save("us.json", us); save("hist.json", hist)
+    try: intraday_local(br, us)
+    except Exception as e: log.append(f"Intradiário local FALHOU: {e}")
     hx = os.path.join(SITE, "hx"); os.makedirs(hx, exist_ok=True)
     def hxsave(key, upd):
         path = os.path.join(hx, fname(key))
