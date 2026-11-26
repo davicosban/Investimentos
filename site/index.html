@@ -589,6 +589,13 @@ async function downloadAll(){const dir=await deskDir();const sep=dir.includes("\
     if(r.code===0){try{JSON.parse(await DESK.fs.readFile(tmp(f),"utf8"));ok.push(f)}catch(e){}}
     else if(["br.json","us.json","hist.json"].includes(f))throw new Error((r.stderr||"curl falhou").trim().slice(0,200))}
   for(const f of ok){await DESK.fs.rename(tmp(f),dir+sep+f)}}
+// Confere se o site tem dados mais novos (arquivo pequeno) e, se tiver, baixa tudo sozinho.
+let checking=false;
+async function checkRemote(){if(checking)return;checking=true;try{
+  const r=await DESK.childProcess.exec(`curl -sSfL --max-time 30 "${SITE}asof.json?t=${Date.now()}"`,{timeout:45000});
+  if(r.code===0){const remote=JSON.parse(r.stdout).asof;if(remote&&remote!==ASOF){await refreshDesktop();return}}
+  dbar(`Atualizado automaticamente · dados de ${ASOF} · confere de novo a cada 30 minutos`,"Atualizar agora",refreshDesktop)}
+ catch(e){}finally{checking=false}}
 async function refreshDesktop(){dbar("Buscando os dados mais recentes…",null);try{await downloadAll();location.reload()}catch(e){
   const m=String(e.message||e);if(m.startsWith("EPERM")){dbar("Sem permissão para buscar dados. Libere “acesso total” nas permissões do app.","Abrir permissões",()=>DESK.permissions.manage().catch(()=>{}))}
   else dbar("Não consegui buscar dados novos ("+m.slice(0,90)+"). Mostrando os últimos salvos.","Tentar de novo",refreshDesktop)}}
@@ -603,8 +610,7 @@ async function getData(){
   try{const c=await readCache();if(c){if(c["macro.json"])Object.assign(MACRO,c["macro.json"]);if(c["asof.json"])ASOF=c["asof.json"].asof;$("#pCDI").value=MACRO.cdi;$("#pIPCA").value=MACRO.ipca12;calcTop();calcRF();calcCmp();calcEQ();renderDsRF();
       const [d,h]=ASOF.split(" ");const [dd,mm,yy]=d.split("/");const age=(Date.now()-new Date(`${yy}-${mm}-${dd}T${h||"00:00"}:00-03:00`))/36e5;
       dbar(`App de desktop · dados de ${ASOF}`,"Atualizar agora",refreshDesktop);
-      let tried=false;try{tried=!!sessionStorage.getItem("autoTry");sessionStorage.setItem("autoTry","1")}catch(e){}
-      if(age>20&&!tried)setTimeout(refreshDesktop,300);
+      setTimeout(checkRemote,800);setInterval(checkRemote,30*60*1000);
       return [c["br.json"],c["us.json"],c["hist.json"]]}}catch(e){}
   setTimeout(refreshDesktop,300);return bundled()}
 
