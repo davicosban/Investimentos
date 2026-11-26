@@ -520,7 +520,7 @@ function intra(o){if(!o||!o.c||o.c.length<2)return null;let t=o.t0*1000;const ou
 function weekly(o){if(!o||!o.c||o.c.length<2)return null;let d=o.d0;const out=[[d*864e5,o.c[0]]];o.dd.forEach((x,i)=>{d+=x;out.push([d*864e5,o.c[i+1]])});return out}
 function pointsFor(sym,k){const s=series(sym);const daily=s?s.map(p=>[p[0]*864e5,p[1]]):null;const hx=HX[sym]||{};
   const tail=days=>{if(!daily)return null;const t=daily[daily.length-1][0]-days*864e5;let i=daily.findIndex(p=>p[0]>=t);i=Math.max(0,i-1);const r=daily.slice(i);return r.length>1?r:null};
-  if(k==="d1")return intra(hx.d1)||tail(1);
+  if(k==="d1"){const w=intra(hx.d5);if(w){const day=x=>new Date(x).toDateString(),ld=day(w[w.length-1][0]);const r=w.filter(p=>day(p[0])===ld);if(r.length>1)return r}return intra(hx.d1)||tail(1)}
   if(k==="d5")return intra(hx.d5)||tail(7);
   if(k==="m1")return tail(30);if(k==="m6")return tail(182);if(k==="y1")return daily;
   if(k==="ytd"){if(!daily)return null;const y=new Date(daily[daily.length-1][0]).getUTCFullYear(),st=Date.UTC(y,0,1);let i=daily.findIndex(p=>p[0]>=st);i=Math.max(0,i-1);return daily.slice(i)}
@@ -733,7 +733,7 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualização automática diária · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();
   mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
     {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},

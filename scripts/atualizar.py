@@ -87,26 +87,35 @@ def chart(sym):
 def fname(sym): return re.sub(r"[^A-Za-z0-9]", "_", sym) + ".json"
 
 def yraw(sym, rng, itv):
-    j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?range={rng}&interval={itv}&includePrePost=false")
+    url = ("https://query2.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?range={rng}&interval={itv}&includePrePost=false")
+    for i in range(3):
+        try:
+            j = jget(url); break
+        except Exception as e:
+            err = e; time.sleep(4 * (i + 1))
+    else:
+        raise err
     x = j["chart"]["result"][0]
     return [(ts, float("%.5g" % v)) for ts, v in zip(x.get("timestamp") or [], x["indicators"]["quote"][0]["close"]) if v is not None]
 
-def extra(sym, key):
-    """max: semanal desde a entrada na bolsa; d1/d5: intradiário (5 e 30 min)."""
-    out = {}
+HOJE = round(time.time() / 86400)
+def extra(sym, prev):
+    """d5: intradiário de 5 dias (15 min) todo dia; max: semanal desde a entrada na bolsa, renovado 1x por semana."""
+    out, errs = {}, []
     try:
-        pts = yraw(sym, "max", "1wk")
-        days = [round(t / 86400) for t, _ in pts]
+        pts = yraw(sym, "5d", "15m")
         if len(pts) > 1:
-            out["max"] = {"d0": days[0], "dd": [days[i] - days[i - 1] for i in range(1, len(days))], "c": [v for _, v in pts]}
-    except Exception: pass
-    for k, rng, itv in (("d1", "1d", "5m"), ("d5", "5d", "30m")):
+            out["d5"] = {"t0": pts[0][0], "dt": [round((pts[i][0] - pts[i - 1][0]) / 60) for i in range(1, len(pts))], "c": [v for _, v in pts]}
+    except Exception as e: errs.append(f"5d {e}")
+    if HOJE - prev.get("maxAt", 0) >= 6 or "max" not in prev:
         try:
-            pts = yraw(sym, rng, itv)
+            pts = yraw(sym, "max", "1wk")
+            days = [round(t / 86400) for t, _ in pts]
             if len(pts) > 1:
-                out[k] = {"t0": pts[0][0], "dt": [round((pts[i][0] - pts[i - 1][0]) / 60) for i in range(1, len(pts))], "c": [v for _, v in pts]}
-        except Exception: pass
-    return key, out
+                out["max"] = {"d0": days[0], "dd": [days[i] - days[i - 1] for i in range(1, len(days))], "c": [v for _, v in pts]}
+                out["maxAt"] = HOJE
+        except Exception as e: errs.append(f"max {e}")
+    return out, errs
 
 # ---------- Banco Central ----------
 def bcb(code, n):
@@ -170,16 +179,21 @@ def main():
         h = hist.get(r["t"])
         if h and r["c"] is None and len(h["c"]) > 1: r["c"] = round((h["c"][-1] / h["c"][-2] - 1) * 100, 2)
     save("br.json", br); save("us.json", us); save("hist.json", hist)
-    hx = os.path.join(SITE, "hx"); os.makedirs(hx, exist_ok=True); ok = 0
-    with ThreadPoolExecutor(6) as ex:
-        for key, out in ex.map(lambda s: extra(s, s.replace(".SA", "")), syms):
-            if not out: continue
-            path = os.path.join(hx, fname(key))
-            try: prev = json.load(open(path))
-            except Exception: prev = {}
-            prev.update(out); ok += 1
+    hx = os.path.join(SITE, "hx"); os.makedirs(hx, exist_ok=True); ok = 0; falhas = 0; erro1 = ""
+    for sym in syms:
+        key = sym.replace(".SA", ""); path = os.path.join(hx, fname(key))
+        try: prev = json.load(open(path))
+        except Exception: prev = {}
+        out, errs = extra(sym, prev)
+        if errs and not erro1: erro1 = f"{sym}: {errs[0]}"
+        if out:
+            prev.pop("d1", None); prev.update(out); ok += 1; falhas = 0
             json.dump(prev, open(path, "w"), separators=(",", ":"))
-    log.append(f"Yahoo longo/intradiário: {ok} ativos")
+        else:
+            falhas += 1
+            if falhas >= 12: log.append("Yahoo longo: muitas falhas seguidas, parei (continua na próxima execução)"); break
+        time.sleep(0.4)
+    log.append(f"Yahoo longo/intradiário: {ok} ativos" + (f" (1º erro: {erro1[:160]})" if erro1 else ""))
     # Macro
     idx = os.path.join(SITE, "index.html"); s = open(idx, encoding="utf-8").read()
     try:
