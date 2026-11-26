@@ -21,7 +21,7 @@ def get(url, tries=2):
                 enc = r.headers.get_content_charset() or "utf-8"
                 return b.decode(enc, "replace")
         except Exception as e:
-            err = e; time.sleep(2 * (i + 1))
+            err = e; time.sleep(15 if "429" in str(e) else 2 * (i + 1))
     raise err
 
 def jget(url): return json.loads(get(url))
@@ -77,8 +77,11 @@ def nasdaq():
 LONG = {}
 def chart(sym):
     """Um pedido só por ativo: histórico diário completo. Guarda 1 ano em hist.json e o resto (semanal) em LONG."""
-    j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?period1=0&period2={int(time.time()) + 86400}&interval=1d")
-    x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
+    try:
+        j = jget("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(sym) + f"?period1=0&period2={int(time.time()) + 86400}&interval=1d")
+        x = j["chart"]["result"][0]; m = x["meta"]; c = x["indicators"]["quote"][0]["close"]
+    except Exception:
+        x = {"timestamp": [], "meta": {"dataGranularity": "x"}}; m = x["meta"]; c = []
     off = m.get("gmtoffset") or 0
     allp = [((ts + off) // 86400, float("%.5g" % v)) for ts, v in zip(x["timestamp"], c) if v is not None]
     if m.get("dataGranularity", "1d") != "1d" or len(allp) < 2:
@@ -192,15 +195,17 @@ def main():
     # Histórico
     syms = [r["t"] + ".SA" for r in br[:100]] + ["^BVSP"] + [r["t"] for r in us if r["t"] != "GOOG"][:117] + ["^GSPC", "^IXIC", "BRL=X"] + FX
     hist = {}
+    ERR = []
     def one(s):
         try: return s, chart(s)
-        except Exception: return s, None
-    with ThreadPoolExecutor(6) as ex:
+        except Exception as e:
+            ERR.append(f"{s}: {str(e)[:120]}"); return s, None
+    with ThreadPoolExecutor(3) as ex:
         for s, h in ex.map(one, syms):
             key = s.replace(".SA", "")
             if h: hist[key] = h
             elif key in old_h: hist[key] = old_h[key]
-    log.append(f"Yahoo: {len(hist)} históricos")
+    log.append(f"Yahoo: {len(hist)} históricos ({len(syms) - len(ERR)} novos, {len(ERR)} falharam" + (f"; ex.: {ERR[0]}" if ERR else "") + ")")
     for r in br:
         h = hist.get(r["t"])
         if h and r["c"] is None and len(h["c"]) > 1: r["c"] = round((h["c"][-1] / h["c"][-2] - 1) * 100, 2)
