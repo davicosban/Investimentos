@@ -24,7 +24,15 @@ def get(url, tries=2, timeout=25):
             err = e; time.sleep(15 if "429" in str(e) else 2 * (i + 1))
     raise err
 
-def jget(url): return json.loads(get(url))
+YBLOCK = {"n": 0}
+def jget(url):
+    y = "yahoo.com" in url
+    if y and YBLOCK["n"] >= 4: raise RuntimeError("Yahoo bloqueado nesta execução (429)")
+    try:
+        return json.loads(get(url, tries=1 if y else 2))
+    except Exception as e:
+        if y and "429" in str(e): YBLOCK["n"] += 1
+        raise
 def load(name, default):
     try: return json.load(open(os.path.join(SITE, name)))
     except Exception: return default
@@ -109,6 +117,16 @@ def intraday(sym):
 # ---------- Câmbio (moedas em reais) ----------
 FX = ["USDBRL=X", "EURBRL=X", "GBPBRL=X", "ARSBRL=X", "CHFBRL=X", "JPYBRL=X", "CNYBRL=X", "CADBRL=X", "AUDBRL=X", "MXNBRL=X", "CLPBRL=X", "UYUBRL=X"]
 
+def awesome(code):
+    """Cotação diária de 1 ano em reais (AwesomeAPI, sem chave), no mesmo formato do hist.json."""
+    j = jget(f"https://economia.awesomeapi.com.br/json/daily/{code}-BRL/360")
+    rows = sorted(((int(r["timestamp"]) - 3 * 3600) // 86400, float(r["bid"]), float(r.get("high") or r["bid"]), float(r.get("low") or r["bid"])) for r in j)
+    byday = {}
+    for d, b, hi, lo in rows: byday[d] = (b, hi, lo)
+    days = sorted(byday); c = [float("%.6g" % byday[d][0]) for d in days]
+    return {"n": j[0].get("name", code), "hi": max(byday[d][1] for d in days), "lo": min(byday[d][2] for d in days),
+            "p": c[-1], "pc": c[0], "t": int(j[0]["timestamp"]), "d0": days[0], "dd": [days[i] - days[i - 1] for i in range(1, len(days))], "c": c}
+
 # ---------- Banco Central ----------
 def bcb(code, n):
     return jget(f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados/ultimos/{n}?formato=json")
@@ -178,7 +196,7 @@ def main():
     except Exception as e:
         us = old_us; log.append(f"Nasdaq FALHOU: {e}")
     # Histórico
-    syms = FX + ["^BVSP", "^GSPC", "^IXIC", "BRL=X"] + [r["t"] + ".SA" for r in br[:100]] + [r["t"] for r in us if r["t"] != "GOOG"][:117]
+    syms = ["^BVSP", "^GSPC", "^IXIC", "BRL=X"] + [r["t"] + ".SA" for r in br[:100]] + [r["t"] for r in us if r["t"] != "GOOG"][:117]
     hist = {}
     ERR = []
     def one(s):
@@ -190,6 +208,16 @@ def main():
             key = s.replace(".SA", "")
             if h: hist[key] = h
             elif key in old_h: hist[key] = old_h[key]
+    okfx = 0
+    for sym in FX:
+        try:
+            hist[sym] = awesome(sym[:3]); okfx += 1
+        except Exception as e:
+            if sym in old_h: hist[sym] = old_h[sym]
+            log.append(f"Câmbio {sym[:3]} FALHOU: {str(e)[:100]}")
+        time.sleep(0.3)
+    if "USDBRL=X" in hist and "BRL=X" not in hist: hist["BRL=X"] = hist["USDBRL=X"]
+    log.append(f"Câmbio (AwesomeAPI): {okfx} moedas")
     log.append(f"Yahoo: {len(hist)} históricos ({len(syms) - len(ERR)} novos, {len(ERR)} falharam" + (f"; ex.: {ERR[0]}" if ERR else "") + ")")
     for r in br:
         h = hist.get(r["t"])
