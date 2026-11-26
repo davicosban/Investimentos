@@ -714,11 +714,12 @@ async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let 
   paint(null)}
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
+const MOB=()=>innerWidth<=640;
 function perfBtn(k,l,v,on,f){const c=v===undefined?"na":v==null?"na":cls(v)||"na";on=on===undefined?k==="y1":on;return `<button type="button" data-k="${k}" aria-pressed="${on}" class="${c}"><small>${l}</small>${v===undefined?"…":v==null?"–":(f||(x=>pct(x,1)))(v)}</button>`}
 addEventListener("resize",()=>{clearTimeout(window._rz);window._rz=setTimeout(()=>{if(DET&&$("#chartbox"))showRange()},250)});
 function showRange(){if(!DET)return;SEL={a:null,b:null,drag:false,moved:false};$("#chartbox").innerHTML=chartSVG(DET.t,DET.cur,DET.k)}
 function openDetail(t,m){
-  if(m==="macro")return openMacro(t);
+  if(m==="macro")return openMacro(t);const dk=MOB()?"m6":"y1";
   if(m==="idx"&&t==="BRL=X")m="fx";
   let r;if(m==="fx"){const f=fxInfo(t);if(!f||!H[t])return;r={t,n:f[1],p:H[t].p,c:dchg(t),_code:f[2]}}
   else if(m==="idx"){if(!H[t])return;r={t,n:IDXN[t]||t,p:H[t].p,c:dchg(t)}}
@@ -732,12 +733,12 @@ function openDetail(t,m){
   else if(m==="br"){kv.push(["Setor",esc(r.s)],["Valor de mercado","R$ "+big(r.mc*1e6)],["Liquidez média diária","R$ "+big(r.lq)],["P/L",fx(r.pl)],["P/VP",fx(r.pvp)],["Dividend yield",fp(r.dy)],["ROE",fp(r.roe)],["ROIC",fp0(r.roic)],["Margem líquida",fp0(r.ml)],["EV/EBITDA",fx(r.evebitda)],["Dívida líquida / patrimônio",fx(r.dlpl)],["Liquidez corrente",fx(r.lc)],["Crescimento receita 5 anos",fp(r.cr5)])}
   else{kv.push(["Setor",esc(r.s)],["Indústria",esc(r.i)],["País",esc(r.co)],["Valor de mercado","US$ "+big(r.mc*1e6)],["Volume do dia",big(r.v)])}
   $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${esc(m==="fx"?r._code+"/BRL":m==="idx"?r.n:t)}</span><span class="muted">${esc(m==="idx"?(t==="^BVSP"?"B3 · Brasil":"Bolsa dos EUA"):r.n||(h&&h.n)||"")}</span><span class="px">${cur(r.p)}</span>${pill(r.c)}${starBtn(m,t)}<button id="dClose" class="dclose" aria-label="Fechar"><span class="lbl">Fechar</span><span class="x">✕</span></button></div>
-  <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k])).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,"y1")}</div></div>
+  <div class="perf" id="perf">${RANGES.map(([k,l])=>perfBtn(k,l,pv[k],k===dk)).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(t,cur,dk)}</div></div>
   <div class="panel"><h3>Indicadores</h3><div class="kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div></div></div>`;
   $("#dClose").onclick=closeDetail;
-  DET={t,cur,k:"y1"};
+  DET={t,cur,k:dk};
   $("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};
-  const hadHX=HX[t]!==undefined;loadHX(t).then(()=>{if(!DET||DET.t!==t)return;const el=$("#perf [data-k=max]");if(el)el.outerHTML=perfBtn("max","Desde o início",maxChange(t),DET.k==="max");if(!hadHX&&DET.k!=="y1")showRange()});
+  const hadHX=HX[t]!==undefined;loadHX(t).then(()=>{if(!DET||DET.t!==t)return;const el=$("#perf [data-k=max]");if(el)el.outerHTML=perfBtn("max","Desde o início",maxChange(t),DET.k==="max");if(!hadHX&&DET.k!==dk)showRange()});
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
 // ---------- Pop-up dos indicadores (Selic, CDI, IPCA...) ----------
@@ -752,14 +753,14 @@ function buildMacro(){if(!MH)return;const g=k=>mhPts(MH[k]);
 function loadMH(){if(MH)return Promise.resolve(MH);return dget("macrohist.json").catch(()=>null).then(j=>{if(j){MH=j;buildMacro()}return MH})}
 function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
   const show=()=>{const cs=CUSTOM[id];const mode=M[2];const vf=mode==="pp"?(v=>fmt(v,2)+"%"):(v=>"R$ "+fmt(v,4));
-    const rg=[["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["y5","5 anos"],["max",cs&&cs.pts[0][0]<Date.now()-3700*864e5?"10 anos":"Tudo"]];
+    const mk=MOB()?"m6":"y5";const rg=[["m1","1 mês"],["m6","6 meses"],["ytd","No ano"],["y1","12 meses"],["y5","5 anos"],["max",cs&&cs.pts[0][0]<Date.now()-3700*864e5?"10 anos":"Tudo"]];
     const chg=k=>{const p=cs&&pointsFor(id,k);if(!p)return null;const a=p[0][1],b=p[p.length-1][1];return mode==="pp"?b-a:(b/a-1)*100};
     const f=mode==="pp"?ppf:(x=>pct(x,1));const last=cs?cs.pts[cs.pts.length-1]:null;
     $("#detail").innerHTML=`<div class="detail"><div class="panel"><div class="dhead"><span class="tk">${M[0]}</span><span class="muted">${M[1]}</span><span class="px">${last?vf(last[1]):"–"}</span>${starBtn("macro",key)}<button id="dClose" class="dclose" aria-label="Fechar"><span class="lbl">Fechar</span><span class="x">✕</span></button></div>
-    ${cs?`<div class="perf" id="perf">${rg.map(([k,l])=>perfBtn(k,l,chg(k),k==="y5",f)).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(id,vf,"y5")}</div>`:`<p class="muted" style="padding:40px 0;text-align:center">O histórico deste indicador chega na próxima atualização automática.</p>`}</div>
+    ${cs?`<div class="perf" id="perf">${rg.map(([k,l])=>perfBtn(k,l,chg(k),k===mk,f)).join("")}</div><div class="chartbox" id="chartbox">${chartSVG(id,vf,mk)}</div>`:`<p class="muted" style="padding:40px 0;text-align:center">O histórico deste indicador chega na próxima atualização automática.</p>`}</div>
     <div class="panel"><h3>Sobre</h3><div class="kv"><div>Valor atual</div><div>${last?vf(last[1]):"–"}</div>${last?`<div>Data</div><div>${new Date(last[0]).toLocaleDateString("pt-BR",{timeZone:"UTC"})}</div>`:""}<div>Fonte</div><div>Banco Central (SGS)</div></div>
     <p class="muted small" style="margin-bottom:0">${mode==="pp"?"As variações dos cartões estão em pontos percentuais (p.p.): diferença entre a taxa no fim e no começo do período.":"Variação percentual da cotação no período."}</p></div></div>`;
-    $("#dClose").onclick=closeDetail;DET={t:id,cur:vf,k:"y5"};
+    $("#dClose").onclick=closeDetail;DET={t:id,cur:vf,k:mk};
     if(cs)$("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};};
   $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;
   if(MH)show();else{$("#detail").innerHTML=`<div class="panel"><p class="muted">Carregando…</p></div>`;loadMH().then(()=>{if(!$("#modal").hidden)show()})}}
