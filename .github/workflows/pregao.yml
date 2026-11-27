@@ -39,7 +39,7 @@ jobs:
             if [ "$hora" -ge 1815 ] || [ $(( $(date +%s) - inicio )) -gt 20400 ]; then echo "Fim do pregão"; break; fi
             git pull -q --rebase -X theirs origin main || true
             python3 scripts/atualizar.py site --rapido || echo "rodada falhou, tento de novo em 5 min"
-            git add site/br.json site/us.json site/asof.json site/macro.json site/hist.json site/intraday.json site/index.html
+            git add site/br.json site/us.json site/asof.json site/macro.json site/hist.json site/intraday.json site/semana.json site/index.html
             git diff --cached --quiet || git commit -q -m "Cotações $(TZ=America/Sao_Paulo date +%H:%M)"
             git push -q || (git pull -q --rebase -X theirs origin main && git push -q) || echo "push falhou"
             sleep 300

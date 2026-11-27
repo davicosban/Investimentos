@@ -258,6 +258,21 @@ def macrohist():
         time.sleep(0.5)
     return out
 
+def semana_guarda(d):
+    """Guarda o gráfico de um dia que terminou em semana.json (últimos 5 pregões), um ponto a cada ~15 min, para o gráfico de 1 semana."""
+    path = os.path.join(SITE, "semana.json")
+    try: w = json.load(open(path))
+    except Exception: w = {"dias": []}
+    keep = []; last = -99
+    for i, m in enumerate(d["m"]):
+        if 595 <= m <= 1100 and (m - last >= 14 or i == len(d["m"]) - 1): keep.append(i); last = m
+    if len(keep) < 2: return
+    dia = {"data": d["data"], "m": [d["m"][i] for i in keep],
+           "p": {t: [v[i] if i < len(v) else None for i in keep] for t, v in d["p"].items()}}
+    w["dias"] = [x for x in w.get("dias", []) if x.get("data") != d["data"]] + [dia]
+    w["dias"] = sorted(w["dias"], key=lambda x: x["data"])[-5:]
+    json.dump(w, open(path, "w"), separators=(",", ":"))
+
 def intraday_local(br, us, hist=None):
     """Monta o gráfico do dia com as próprias rodadas (~16 min): guarda a cotação de cada ativo a cada rodada."""
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
@@ -266,7 +281,9 @@ def intraday_local(br, us, hist=None):
     path = os.path.join(SITE, "intraday.json")
     try: d = json.load(open(path))
     except Exception: d = {}
-    if d.get("data") != hoje: d = {"data": hoje, "m": [], "p": {}}
+    if d.get("data") != hoje:
+        if d.get("m"): semana_guarda(d)
+        d = {"data": hoje, "m": [], "p": {}}
     if d["m"] and d["m"][0] < 600:   # limpa pontos de rodadas fora do pregão gravados antes desta regra
         k = next((i for i, m in enumerate(d["m"]) if m >= 600), len(d["m"]))
         d["m"] = d["m"][k:]; d["p"] = {t: v[k:] for t, v in d["p"].items()}

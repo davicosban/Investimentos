@@ -972,14 +972,22 @@ function weekly(o){if(!o||!o.c||o.c.length<2)return null;let d=o.d0;const out=[[
 function pointsFor(sym,k){const cs=CUSTOM[sym];const s=cs?null:series(sym);const daily=cs?cs.pts:s?s.map(p=>[p[0]*864e5,p[1]]):null;const hx=HX[sym]||{};
   const tail=days=>{if(!daily)return null;const t=daily[daily.length-1][0]-days*864e5;let i=daily.findIndex(p=>p[0]>=t);i=Math.max(0,i-1);const r=daily.slice(i);return r.length>1?r:null};
   if(k==="d1"){const li=intraLocal(sym);if(li)return li;const w=intra(hx.d5);if(w){const day=x=>new Date(x).toDateString(),ld=day(w[w.length-1][0]);const r=w.filter(p=>day(p[0])===ld);if(r.length>1)return r}return intra(hx.d1)||tail(1)}
-  if(k==="d5")return intra(hx.d5)||tail(7);
+  if(k==="d5")return week5(sym,intra(hx.d5)||tail(7))||intra(hx.d5)||tail(7);
   if(k==="m1")return tail(30);if(k==="m6")return tail(182);if(k==="y5")return tail(1827);if(k==="y1")return cs?tail(366):daily;
   if(cs&&k==="max")return daily;
   if(k==="ytd"){if(!daily)return null;const y=new Date(daily[daily.length-1][0]).getUTCFullYear(),st=Date.UTC(y,0,1);let i=daily.findIndex(p=>p[0]>=st);i=Math.max(0,i-1);return daily.slice(i)}
   if(k==="max"){const w=weekly(hx.max);if(!w)return null;if(daily){const lw=w[w.length-1][0];daily.forEach(p=>{if(p[0]>lw)w.push(p)})}return w}
   return daily}
 // Gráfico do dia montado com as rodadas do robô (~16 min), começando no fechamento anterior
-let INTRA=null;
+let INTRA=null,SEMANA=null;
+// 1 semana: dias guardados pelo robô (semana.json, um ponto a cada ~15 min) + o dia de hoje; completa com o Yahoo antigo se faltar dia
+function week5(sym,yh){const days=new Map(),key=ms=>new Date(ms-3*36e5).toISOString().slice(0,10);
+  if(yh)yh.forEach(p=>{const k=key(p[0]);if(!days.has(k))days.set(k,[]);days.get(k).push(p)});
+  const loc=new Set();
+  ((SEMANA&&SEMANA.dias)||[]).forEach(D=>{const v=D.p&&D.p[sym];if(!v)return;const [y,mo,d]=D.data.split("-").map(Number);const pts=D.m.map((m,i)=>[Date.UTC(y,mo-1,d)+(m+180)*6e4,v[i]]).filter(p=>p[1]!=null);if(pts.length>1){days.set(D.data,pts);loc.add(D.data)}});
+  const hoje=INTRA&&INTRA.data?intraLocal(sym):null;if(hoje&&hoje.length>1){days.set(INTRA.data,hoje.map(p=>[p[0],p[1]]));loc.add(INTRA.data)}
+  if(!loc.size)return null;const l0=[...loc].sort()[0];for(const k of [...days.keys()])if(k>=l0&&!loc.has(k))days.delete(k);   // dia sem pontos do robô depois do primeiro dia guardado: tira o ponto diário
+  const ks=[...days.keys()].sort().slice(-6);const out=[];ks.forEach(k=>days.get(k).sort((a,b)=>a[0]-b[0]).forEach(p=>out.push(p)));return out.length>2?out:null}
 function intraLocal(sym){const I=INTRA;if(!I||!I.p||!I.p[sym])return null;const r=BR.find(x=>x.t===sym)||US.find(x=>x.t===sym);
   const [y,mo,d]=I.data.split("-").map(Number);const ms=m=>Date.UTC(y,mo-1,d)+(m+180)*6e4;
   const us=sym==="^GSPC"||sym==="^IXIC"||(!!r&&!BR.includes(r));const open=us?11*60+30:10*60;
@@ -1007,11 +1015,15 @@ function chartSVG(sym,cur,k="y1"){let s=pointsFor(sym,k),zoomed=false;
   const st=U*Math.max(1,Math.ceil((mx-mn)/U/4-1e-9));const dec=U>=1?0:U>=.1?1:2;const up=s.pc?s[s.length-1][1]>=s.pc:ys[ys.length-1]>=ys[0];const col=up?"var(--up)":"var(--down)";
   // Dia: eixo pelo horário real (10h às 18h), como no Google; demais períodos: um ponto por pregão
   let tx=null;if(k==="d1"&&!zoomed){const d=new Date(s[0][0]);const at=(h,m)=>Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h,m);tx=[Math.min(s[0][0],at(13,0)),Math.max(s[s.length-1][0],at(21,0))]}
-  const X=tx?(i=>pl+((s[i][0]-tx[0])/(tx[1]-tx[0]||1))*(W-pl-pr)):(i=>pl+(i/(s.length-1))*(W-pl-pr)),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
+  // 1 semana: cada pregão ocupa a mesma largura (10h às 18h), e um dia com só o fechamento fica no fim do seu espaço
+  let wx=null,wd=null;if(k==="d5"&&!zoomed){const dk=ms=>new Date(ms-3*36e5).toISOString().slice(0,10);wd=[...new Set(s.map(p=>dk(p[0])))];const cnt={};s.forEach(p=>{const d=dk(p[0]);cnt[d]=(cnt[d]||0)+1});
+    if(wd.length>1)wx=s.map(p=>{const d=dk(p[0]),j=wd.indexOf(d);const dt=new Date(p[0]-3*36e5),m=dt.getUTCHours()*60+dt.getUTCMinutes();const f=cnt[d]===1?.97:Math.min(.98,Math.max(.02,(m-600)/480));return (j+f)/wd.length});else wd=null}
+  const X=wx?(i=>pl+wx[i]*(W-pl-pr)):tx?(i=>pl+((s[i][0]-tx[0])/(tx[1]-tx[0]||1))*(W-pl-pr)):(i=>pl+(i/(s.length-1))*(W-pl-pr)),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
   const d=s.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");const span=s[s.length-1][0]-s[0][0];
   let g="";for(let v=Math.ceil(mn/st-1e-9)*st;v<=mx+st*.01;v+=st){const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,dec)}</text>`}
   if(s.pc){const y=Y(s.pc);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-dasharray="2 4" opacity=".8"/><text x="${W-pr-4}" y="${y-6}" text-anchor="end" style="fill:var(--muted)">Fech. ant. ${fmt(s.pc,s.pc>=1000?0:2)}</text>`}
   if(tx){const d=new Date(tx[0]);for(let h=10;h<=18;h+=3){const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h+3,0);if(t<tx[0]||t>tx[1])continue;const x=pl+((t-tx[0])/(tx[1]-tx[0]))*(W-pl-pr);g+=`<text x="${x}" y="${Hh-6}" text-anchor="${x<pl+20?"start":x>W-pr-20?"end":"middle"}">${h}:00</text>`}}
+  else if(wd){const n=wd.length;wd.forEach((d,j)=>{const x=pl+(j+.5)/n*(W-pl-pr);const [yy,mm,dd]=d.split("-");g+=`<text x="${x}" y="${Hh-6}" text-anchor="middle">${dd}/${mm}</text>`;if(j)g+=`<line x1="${pl+j/n*(W-pl-pr)}" x2="${pl+j/n*(W-pl-pr)}" y1="${pt}" y2="${Hh-pb}" stroke="var(--line)" stroke-width="1"/>`})}
   else {// rótulos no começo de cada hora/dia/mês/ano, até 7, cobrindo o período inteiro
     const bk=ms=>{const d=new Date(ms);return span<=1.6*864e5?d.getHours():span<=75*864e5?d.toDateString():span<=420*864e5?d.getUTCFullYear()*12+d.getUTCMonth():d.getUTCFullYear()};
     let idx=[];for(let i=1;i<s.length;i++)if(bk(s[i][0])!==bk(s[i-1][0]))idx.push(i);
@@ -1020,7 +1032,7 @@ function chartSVG(sym,cur,k="y1"){let s=pointsFor(sym,k),zoomed=false;
     if(idx.length<2)idx=[0.15,0.5,0.85].map(f=>Math.round(f*(s.length-1)));
     idx.forEach(i=>{g+=`<text x="${X(i)}" y="${Hh-6}" text-anchor="middle">${tfmt(s[i][0],span)}</text>`})}
   const li=s.length-1;
-  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,tx,cur:cur||(v=>fmt(v)),cur0:cur,sym,k,zoomed,mode:CUSTOM[sym]?CUSTOM[sym].mode:"pct"};
+  CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,tx,wx,cur:cur||(v=>fmt(v)),cur0:cur,sym,k,zoomed,mode:CUSTOM[sym]?CUSTOM[sym].mode:"pct"};
   return `<div class="selinfo" id="selinfo">${selIdle()}</div>
   <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<defs><linearGradient id="agrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".26"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><g class="base"><path class="ar" d="${d} L${X(li)} ${Hh-pb} L${X(0)} ${Hh-pb}Z" fill="url(#agrad)"/><path class="ln" d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/><circle class="halo" cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/><circle class="dot" cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
 // Sem trecho marcado: dica, ou (com zoom) o período ampliado e o botão para voltar
@@ -1042,6 +1054,7 @@ const SELHINT="Clique num cartão acima para mudar o período. Clique e arraste 
 // ---------- Seleção de período no gráfico ----------
 let CHART=null,SEL={a:null,b:null,drag:false,moved:false};
 function chIdx(e){const c=CHART,svg=$("#chartsvg"),r=svg.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*c.W;
+  if(c.wx){let b=0;c.s.forEach((p,i)=>{if(Math.abs(c.X(i)-x)<Math.abs(c.X(b)-x))b=i});return b}
   if(c.tx){const t=c.tx[0]+(x-c.pl)/(c.W-c.pl-c.pr)*(c.tx[1]-c.tx[0]);let b=0;c.s.forEach((p,i)=>{if(Math.abs(p[0]-t)<Math.abs(c.s[b][0]-t))b=i});return b}
   return Math.max(0,Math.min(c.s.length-1,Math.round((x-c.pl)/(c.W-c.pl-c.pr)*(c.s.length-1))))}
 const dfmt=ms=>tfmt(ms,CHART?CHART.span:1e12,true);
@@ -1336,9 +1349,9 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
-  dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
+  dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});dget("semana.json").then(j=>{SEMANA=j}).catch(()=>{});
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}
   mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
     {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
