@@ -182,14 +182,14 @@ def idx_reserva(hist, log):
                 if not px or px <= 0: continue
             except Exception as e:
                 erros.append(f"{nome} {key}: {str(e)[:80]}"); continue
-            if h.get("t") and t <= h["t"]:                 # o que já temos é mais novo
-                erros.append(f"{nome} {key}: {px} de {datetime.datetime.utcfromtimestamp(t):%d/%m %H:%M} UTC não é mais novo"); break
-            # compara o dia da cotação nova com o dia da última cotação guardada (h["t"]): mesmo dia troca a última barra, dia novo cria outra
+            # compara pelo dia (algumas fontes só dão a data, sem hora): dia mais antigo é ignorado,
+            # mesmo dia troca a última barra pelo preço atual, dia novo cria outra barra
             day = (t + off) // 86400; dh = (h["t"] + off) // 86400 if h.get("t") else h["d0"] + sum(h["dd"])
-            if day < dh: break
+            if day < dh or (day == dh and abs(px - (h.get("p") or 0)) < 1e-9):
+                erros.append(f"{nome} {key}: {px} de {datetime.datetime.utcfromtimestamp(t):%d/%m} sem novidade"); break
             if day == dh: h["c"][-1] = float("%.5g" % px)
             else: h["dd"].append(day - dh); h["c"].append(float("%.5g" % px))
-            h["p"] = px; h["t"] = t
+            h["p"] = px; h["t"] = max(t, h.get("t") or 0)
             h["hi"] = max(h.get("hi") or px, px); h["lo"] = min(h.get("lo") or px, px)
             feitos.append(f"{key} {px} ({nome})"); break
     log.append("Índices e dólar pela reserva: " + (", ".join(feitos) if feitos else "nada mais novo") + (" | " + "; ".join(erros[:8]) if erros else ""))
@@ -237,10 +237,14 @@ def intraday_local(br, us):
     """Monta o gráfico do dia com as próprias rodadas (~16 min): guarda a cotação de cada ativo a cada rodada."""
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
     hoje = now.strftime("%Y-%m-%d"); minuto = now.hour * 60 + now.minute
+    if now.weekday() >= 5 or not (600 <= minuto <= 1100): return   # só durante o pregão (10h às 18h20), para o gráfico do dia não ganhar pontos da madrugada
     path = os.path.join(SITE, "intraday.json")
     try: d = json.load(open(path))
     except Exception: d = {}
     if d.get("data") != hoje: d = {"data": hoje, "m": [], "p": {}}
+    if d["m"] and d["m"][0] < 600:   # limpa pontos de rodadas fora do pregão gravados antes desta regra
+        k = next((i for i, m in enumerate(d["m"]) if m >= 600), len(d["m"]))
+        d["m"] = d["m"][k:]; d["p"] = {t: v[k:] for t, v in d["p"].items()}
     if d["m"] and minuto - d["m"][-1] < 5: return   # rodada repetida em menos de 5 min
     ativos = [r for r in br[:300]] + sorted(us, key=lambda r: -(r.get("mc") or 0))[:300]
     n = len(d["m"]); d["m"].append(minuto)
