@@ -169,6 +169,31 @@ def idx_awesome(_):
     j = jget("https://economia.awesomeapi.com.br/json/last/USD-BRL")["USDBRL"]
     return float(j["bid"]), int(j["timestamp"])
 
+def us_cnbc(us, log):
+    """A lista da Nasdaq traz o preço do fechamento anterior durante o pregão. A CNBC dá a cotação do momento,
+    em lotes de 40 ações; atualiza preço e variação do dia das 300 maiores (as que têm gráfico do dia)."""
+    top = sorted(us, key=lambda r: -(r.get("mc") or 0))[:300]; idx = {r["t"]: r for r in top}; ok = 0; err = ""
+    tick = [r["t"] for r in top]
+    for i in range(0, len(tick), 40):
+        try:
+            j = jget("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=" + urllib.parse.quote("|".join(tick[i:i + 40]))
+                     + "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json")
+            qs = j["FormattedQuoteResult"]["FormattedQuote"]
+            if isinstance(qs, dict): qs = [qs]
+            for q in qs:
+                r = idx.get(q.get("symbol"))
+                try: px = float(str(q.get("last", "")).replace(",", ""))
+                except Exception: continue
+                if not r or px <= 0: continue
+                r["p"] = round(px, 4)
+                try: r["c"] = round(float(str(q.get("change_pct", "")).replace("%", "").replace("+", "").replace(",", "")), 3)
+                except Exception: pass
+                ok += 1
+        except Exception as e:
+            err = err or str(e)[:100]
+        time.sleep(0.3)
+    log.append(f"CNBC ações EUA: {ok} cotações" + (f" (erro: {err})" if err else ""))
+
 def idx_reserva(hist, log):
     feitos = []
     erros = []
@@ -323,6 +348,8 @@ def main():
         us = nasdaq(); log.append(f"Nasdaq: {len(us)} ações")
     except Exception as e:
         us = old_us; log.append(f"Nasdaq FALHOU: {e}")
+    try: us_cnbc(us, log)
+    except Exception as e: log.append(f"CNBC ações EUA FALHOU: {str(e)[:100]}")
     # Histórico
     syms = [] if RAPIDO else ["^BVSP", "^GSPC", "^IXIC", "BRL=X"] + [r["t"] + ".SA" for r in br[:100]] + [r["t"] for r in us if r["t"] != "GOOG"][:117]
     hist = {}
