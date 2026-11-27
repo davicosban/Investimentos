@@ -783,16 +783,18 @@ function pintaTema(){const t=temaAtual();document.querySelectorAll("#umenu [data
 function setTema(t){document.documentElement.dataset.theme=t;store.set("tema",t);pintaTema()}
 
 // ---------- Menu da conta: foto do usuário abre favoritos, tema e sair ----------
-const ACCT={user:null,signIn:null,signOut:null};
+const ACCT={user:null,signIn:null,signOut:null,last:null};
+// Último perfil conectado: mostra a foto na hora ao abrir o app, enquanto o login do Google é restaurado
+try{ACCT.last=JSON.parse(localStorage.getItem("conta")||"null")}catch(e){}
 const IC={user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 17l5-5-5-5M21 12H9"/></svg>',
   in:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>'};
-function paintAcct(){const u=ACCT.user,b=$("#acctBtn");
+function paintAcct(){const u=ACCT.user||ACCT.last,b=$("#acctBtn");
   b.innerHTML=u?`<span class="ini" aria-hidden="true">${esc((u.displayName||u.email||"?").trim()[0].toUpperCase())}</span>${u.photoURL?`<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:""}`:IC.user;
   b.title=u?(u.displayName||u.email):"Conta e preferências";if(!$("#umenu").hidden)fillMenu()}
-function fillMenu(){const u=ACCT.user,t=temaAtual(),n=FAV.size;
-  $("#umenu").innerHTML=(u?`<div class="uh"><b>${esc(u.displayName||"Conta Google")}</b><span>${esc(u.email||"")}</span>${CLOUD&&CLOUD.sync?`<span class="usync ${CLOUD.sync}">${CLOUD.sync==="ok"?"Favoritos e carteira sincronizados":CLOUD.sync==="erro"?"Não consegui sincronizar. Tento de novo ao voltar ao app.":"Sincronizando…"}</span>`:""}</div><hr>`:ACCT.signIn?`<div class="uh"><b>Sem conta conectada</b><span>Entre para salvar os favoritos na nuvem</span></div><hr>`:"")+
+function fillMenu(){const u=ACCT.user||ACCT.last,t=temaAtual(),n=FAV.size;
+  $("#umenu").innerHTML=(u?`<div class="uh"><b>${esc(u.displayName||"Conta Google")}</b><span>${esc(u.email||"")}</span>${!ACCT.user?`<span class="usync">Conectando…</span>`:CLOUD&&CLOUD.sync?`<span class="usync ${CLOUD.sync}">${CLOUD.sync==="ok"?"Favoritos e carteira sincronizados":CLOUD.sync==="erro"?"Não consegui sincronizar. Tento de novo ao voltar ao app.":"Sincronizando…"}</span>`:""}</div><hr>`:ACCT.signIn?`<div class="uh"><b>Sem conta conectada</b><span>Entre para salvar os favoritos na nuvem</span></div><hr>`:"")+
   `<button class="it" role="menuitem" data-a="fav">${IC.star}Favoritos<span class="ct">${n||""}</span></button>`+
   `<div class="ut">${t==="dark"?MOON:SUN}Tema<div class="seg" role="group" aria-label="Tema"><button type="button" data-tema="light" aria-pressed="${t==="light"}">Claro</button><button type="button" data-tema="dark" aria-pressed="${t==="dark"}">Escuro</button></div></div>`+
   (u?`<hr><button class="it" role="menuitem" data-a="out">${IC.out}Sair</button>`:ACCT.signIn?`<hr><button class="it" role="menuitem" data-a="in">${IC.in}Entrar com Google</button>`:"")}
@@ -1065,7 +1067,10 @@ function applyCloudFavs(list){const old=FAV;FAV=new Set(list);store.set("favs",[
 async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let conf;try{const r=await fetch("firebase-config.json",{cache:"no-cache"});if(!r.ok)return;conf=await r.json()}catch(e){return}
   const V="10.12.2",B=`https://www.gstatic.com/firebasejs/${V}/`;
   const [{initializeApp},A,F]=await Promise.all([import(B+"firebase-app.js"),import(B+"firebase-auth.js"),import(B+"firebase-firestore.js")]);
-  const app=initializeApp(conf),auth=A.getAuth(app),db=F.getFirestore(app);
+  const app=initializeApp(conf);let auth;
+  // Guarda o login no IndexedDB e, se falhar (iPhone na tela inicial), no localStorage
+  try{auth=A.initializeAuth(app,{persistence:[A.indexedDBLocalPersistence,A.browserLocalPersistence],popupRedirectResolver:A.browserPopupRedirectResolver})}catch(e){auth=A.getAuth(app)}
+  const db=F.getFirestore(app);
   CLOUD={auth,db,doc:F.doc,setDoc:F.setDoc,user:null,unsub:null};
   ACCT.signIn=async()=>{try{await A.signInWithPopup(auth,new A.GoogleAuthProvider())}catch(e){if(e.code!=="auth/popup-closed-by-user")alert("Não consegui entrar: "+(e.code||e.message))}};
   ACCT.signOut=()=>A.signOut(auth);paintAcct();
@@ -1077,8 +1082,9 @@ async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let 
       setSync("ok");
       CLOUD.unsub=F.onSnapshot(ref,sn=>{if(sn.exists()&&!sn.metadata.hasPendingWrites){applyCloudFavs(sn.data().favs||[]);if(sn.data().carteira)applyCloudCart(sn.data().carteira)}},e=>setSync("erro",e))}
     catch(e){setSync("erro",e)}finally{CLOUD.busy=0}};
-  A.onAuthStateChanged(auth,u=>{CLOUD.user=u;ACCT.user=u;CLOUD.sync=u?"pend":null;paintAcct();if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}if(u)cloudSync()});
+  A.onAuthStateChanged(auth,u=>{CLOUD.user=u;ACCT.user=u;ACCT.last=u?{displayName:u.displayName,email:u.email,photoURL:u.photoURL}:null;try{u?localStorage.setItem("conta",JSON.stringify(ACCT.last)):localStorage.removeItem("conta")}catch(e){}CLOUD.sync=u?"pend":null;paintAcct();if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}if(u)cloudSync()});
   document.addEventListener("visibilitychange",()=>{if(!document.hidden&&CLOUD.user&&CLOUD.sync==="erro")cloudSync()});}
+initCloud().catch(e=>console.warn("conta:",e));
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
 const MOB=()=>innerWidth<=640;
@@ -1280,7 +1286,6 @@ getData().then(([b,u,h])=>{
   $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
-  initCloud().catch(e=>console.warn("conta:",e));
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}
   mkTable({id:"b3",m:"br",sort:"lq",data:()=>BR,extra:x=>(x.lq||0)>=+$("#b3liq").value,cols:[
     {k:"t",h:"Ticker",l:1,v:x=>x.t,r:x=>`<td class="t">${esc(x.t)}</td>`},
