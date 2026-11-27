@@ -475,6 +475,7 @@ nav.tabs.glide a::after{display:none}
 .umenu .uh{padding:8px 10px 8px;display:flex;flex-direction:column;gap:1px;min-width:0}
 .umenu .uh b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .umenu .uh span{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.umenu .uh .usync{white-space:normal;margin-top:5px;display:flex;align-items:flex-start;gap:6px;font-size:12px}.umenu .uh .usync::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;margin-top:4px;background:var(--muted)}.umenu .uh .usync.ok::before{background:var(--up)}.umenu .uh .usync.erro{color:var(--down)}.umenu .uh .usync.erro::before{background:var(--down)}
 .umenu .it{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--ink);cursor:pointer;transition:background-color .12s}
 .umenu .it:hover,.umenu .it:focus-visible{background:var(--surface2)}
 .umenu .it svg,.umenu .ut>svg{width:18px;height:18px;flex:none;color:var(--muted)}
@@ -791,7 +792,7 @@ function paintAcct(){const u=ACCT.user,b=$("#acctBtn");
   b.innerHTML=u?`<span class="ini" aria-hidden="true">${esc((u.displayName||u.email||"?").trim()[0].toUpperCase())}</span>${u.photoURL?`<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:""}`:IC.user;
   b.title=u?(u.displayName||u.email):"Conta e preferências";if(!$("#umenu").hidden)fillMenu()}
 function fillMenu(){const u=ACCT.user,t=temaAtual(),n=FAV.size;
-  $("#umenu").innerHTML=(u?`<div class="uh"><b>${esc(u.displayName||"Conta Google")}</b><span>${esc(u.email||"")}</span></div><hr>`:ACCT.signIn?`<div class="uh"><b>Sem conta conectada</b><span>Entre para salvar os favoritos na nuvem</span></div><hr>`:"")+
+  $("#umenu").innerHTML=(u?`<div class="uh"><b>${esc(u.displayName||"Conta Google")}</b><span>${esc(u.email||"")}</span>${CLOUD&&CLOUD.sync?`<span class="usync ${CLOUD.sync}">${CLOUD.sync==="ok"?"Favoritos e carteira sincronizados":CLOUD.sync==="erro"?"Não consegui sincronizar. Tento de novo ao voltar ao app.":"Sincronizando…"}</span>`:""}</div><hr>`:ACCT.signIn?`<div class="uh"><b>Sem conta conectada</b><span>Entre para salvar os favoritos na nuvem</span></div><hr>`:"")+
   `<button class="it" role="menuitem" data-a="fav">${IC.star}Favoritos<span class="ct">${n||""}</span></button>`+
   `<div class="ut">${t==="dark"?MOON:SUN}Tema<div class="seg" role="group" aria-label="Tema"><button type="button" data-tema="light" aria-pressed="${t==="light"}">Claro</button><button type="button" data-tema="dark" aria-pressed="${t==="dark"}">Escuro</button></div></div>`+
   (u?`<hr><button class="it" role="menuitem" data-a="out">${IC.out}Sair</button>`:ACCT.signIn?`<hr><button class="it" role="menuitem" data-a="in">${IC.in}Entrar com Google</button>`:"")}
@@ -1057,7 +1058,9 @@ function renderFav(){const rows=[];
 // ---------- Conta Google (Firebase) para salvar favoritos na nuvem ----------
 // Só no site (github.io) e só se existir firebase-config.json. A configuração do Firebase para web é pública; quem protege os dados são as regras do Firestore.
 let CLOUD=null;
-function cloudSave(){if(CLOUD&&CLOUD.user)CLOUD.setDoc(CLOUD.doc(CLOUD.db,"users",CLOUD.user.uid),{favs:[...FAV],atualizado:Date.now()},{merge:true}).catch(e=>console.warn("favoritos na nuvem:",e))}
+function setSync(v,e){if(!CLOUD)return;CLOUD.sync=v;if(e)console.warn("nuvem:",e);if(!$("#umenu").hidden)fillMenu()}
+function cloudPut(data){if(!(CLOUD&&CLOUD.user))return;if(CLOUD.sync==="erro"){cloudSync();return}CLOUD.setDoc(CLOUD.doc(CLOUD.db,"users",CLOUD.user.uid),{...data,atualizado:Date.now()},{merge:true}).then(()=>setSync("ok"),e=>setSync("erro",e))}
+function cloudSave(){cloudPut({favs:[...FAV]})}
 function applyCloudFavs(list){const old=FAV;FAV=new Set(list);store.set("favs",[...FAV]);new Set([...old,...FAV]).forEach(paintFav);buildTape();if(!$("#v-favoritos").hidden)renderFav()}
 async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let conf;try{const r=await fetch("firebase-config.json",{cache:"no-cache"});if(!r.ok)return;conf=await r.json()}catch(e){return}
   const V="10.12.2",B=`https://www.gstatic.com/firebasejs/${V}/`;
@@ -1066,11 +1069,16 @@ async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let 
   CLOUD={auth,db,doc:F.doc,setDoc:F.setDoc,user:null,unsub:null};
   ACCT.signIn=async()=>{try{await A.signInWithPopup(auth,new A.GoogleAuthProvider())}catch(e){if(e.code!=="auth/popup-closed-by-user")alert("Não consegui entrar: "+(e.code||e.message))}};
   ACCT.signOut=()=>A.signOut(auth);paintAcct();
-  A.onAuthStateChanged(auth,async u=>{CLOUD.user=u;ACCT.user=u;paintAcct();if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}if(!u)return;
-    const ref=F.doc(db,"users",u.uid);try{const snap=await F.getDoc(ref);const nuvem=snap.exists()?(snap.data().favs||[]):[];
-      // primeira vez: junta os favoritos deste aparelho com os da conta
-      applyCloudFavs([...new Set([...nuvem,...FAV])]);if(nuvem.length!==FAV.size)cloudSave();const nc=snap.exists()?(snap.data().carteira||[]):[];const mc=mergeCart(nc,CART);applyCloudCart(mc);if(mc.length!==nc.length)saveCart()}catch(e){console.warn(e)}
-    CLOUD.unsub=F.onSnapshot(ref,sn=>{if(sn.exists()&&!sn.metadata.hasPendingWrites){applyCloudFavs(sn.data().favs||[]);if(sn.data().carteira)applyCloudCart(sn.data().carteira)}})});}
+  // Ao entrar (e de novo se a nuvem falhar): junta favoritos e carteira deste aparelho com os da conta, grava a união e passa a ouvir mudanças
+  window.cloudSync=async()=>{const u=CLOUD.user;if(!u||CLOUD.busy)return;CLOUD.busy=1;if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}const ref=F.doc(db,"users",u.uid);
+    try{const snap=await F.getDoc(ref);const d=snap.exists()?snap.data():{};const nf=d.favs||[],nc=d.carteira||[];
+      const uf=[...new Set([...nf,...FAV])],mc=mergeCart(nc,CART);applyCloudFavs(uf);applyCloudCart(mc);
+      if(uf.length!==nf.length||mc.length!==nc.length||!snap.exists())await F.setDoc(ref,{favs:uf,carteira:mc,atualizado:Date.now()},{merge:true});
+      setSync("ok");
+      CLOUD.unsub=F.onSnapshot(ref,sn=>{if(sn.exists()&&!sn.metadata.hasPendingWrites){applyCloudFavs(sn.data().favs||[]);if(sn.data().carteira)applyCloudCart(sn.data().carteira)}},e=>setSync("erro",e))}
+    catch(e){setSync("erro",e)}finally{CLOUD.busy=0}};
+  A.onAuthStateChanged(auth,u=>{CLOUD.user=u;ACCT.user=u;CLOUD.sync=u?"pend":null;paintAcct();if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}if(u)cloudSync()});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&CLOUD.user&&CLOUD.sync==="erro")cloudSync()});}
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
 const MOB=()=>innerWidth<=640;
@@ -1365,7 +1373,7 @@ const usdbrl=()=>(H["USDBRL=X"]&&H["USDBRL=X"].p)||(H["BRL=X"]&&H["BRL=X"].p)||M
 function findAsset(t){t=String(t||"").trim().toUpperCase();if(!t)return null;let r=BR.find(x=>x.t===t);if(r)return {r,m:"br"};r=US.find(x=>x.t===t);return r?{r,m:"us"}:null}
 function positions(){const P={};CART.filter(x=>x.k!=="rf").sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.ts-b.ts).forEach(x=>{const k=x.m+"|"+x.t,o=P[k]||(P[k]={t:x.t,m:x.m,q:0,cost:0,real:0});
   if(x.s==="c"){o.q+=x.q;o.cost+=x.q*x.p}else{const qs=Math.min(x.q,o.q);if(o.q>0){const avg=o.cost/o.q;o.real+=(x.p-avg)*qs;o.cost-=avg*qs;o.q-=qs}}});return Object.values(P)}
-function saveCart(){store.set("carteira",CART);if(CLOUD&&CLOUD.user)CLOUD.setDoc(CLOUD.doc(CLOUD.db,"users",CLOUD.user.uid),{carteira:CART,atualizado:Date.now()},{merge:true}).catch(e=>console.warn("carteira na nuvem:",e))}
+function saveCart(){store.set("carteira",CART);cloudPut({carteira:CART})}
 function applyCloudCart(list){CART=list;store.set("carteira",CART);if(!$("#v-carteira").hidden)renderCart()}
 function mergeCart(a,b){const m=new Map();[...a,...b].forEach(x=>m.set(x.id,x));return [...m.values()]}
 const RFT={cdb:["CDB, LC ou RDB","pos",100,"ir"],lci:["LCI ou LCA","pos",90,"isento"],tsel:["Tesouro Selic","selic",0.05,"ir"],tpre:["Tesouro Prefixado","pre",13,"ir"],tipca:["Tesouro IPCA+","ipca",7,"ir"],deb:["Debênture","ipca",7,"ir"],cri:["CRI, CRA ou incentivada","ipca",7,"isento"],poup:["Poupança","poup",0,"isento"],fundo:["Fundo ou outro","man",0,"ir"]};
