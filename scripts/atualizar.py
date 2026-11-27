@@ -135,6 +135,50 @@ def intraday(sym):
     if len(pts) < 2: return None
     return {"t0": pts[0][0], "dt": [round((pts[i][0] - pts[i - 1][0]) / 60) for i in range(1, len(pts))], "c": [v for _, v in pts]}
 
+# ---------- Índices e dólar sem depender do Yahoo ----------
+# O Yahoo às vezes bloqueia o GitHub (erro 429) e o Ibovespa, o S&P, a Nasdaq e o dólar ficavam parados.
+# Fontes grátis de reserva, na ordem: Google Finance (página), Stooq (CSV) e, para o dólar, AwesomeAPI.
+IDXSRC = {"^BVSP": ("IBOV:INDEXBVMF", "^bvp", -10800), "^GSPC": (".INX:INDEXSP", "^spx", -18000),
+          "^IXIC": (".IXIC:INDEXNASDAQ", "^ndq", -18000), "BRL=X": ("USD-BRL", "usdbrl", -10800)}
+
+def idx_google(code):
+    h = get("https://www.google.com/finance/quote/" + code + "?hl=en", tries=1, timeout=15)
+    m = re.search(r'data-last-price="([\d.]+)"', h); t = re.search(r'data-last-normal-market-timestamp="(\d+)"', h)
+    if not m: raise ValueError("sem preço")
+    return float(m.group(1)), int(t.group(1)) if t else int(time.time())
+
+def idx_stooq(code):
+    rows = get("https://stooq.com/q/l/?s=" + urllib.parse.quote(code) + "&f=sd2t2ohlcv&h&e=csv", tries=1, timeout=15).strip().splitlines()
+    f = rows[1].split(","); px = float(f[6])
+    d = datetime.datetime.strptime(f[1] + " " + f[2], "%Y-%m-%d %H:%M:%S")   # horário da Polônia; só a data importa
+    return px, min(int(time.time()), int(datetime.datetime(d.year, d.month, d.day, 21, tzinfo=datetime.timezone.utc).timestamp()))
+
+def idx_awesome(_):
+    j = jget("https://economia.awesomeapi.com.br/json/last/USD-BRL")["USDBRL"]
+    return float(j["bid"]), int(j["timestamp"])
+
+def idx_reserva(hist, log):
+    feitos = []
+    for key, (g, st, off) in IDXSRC.items():
+        h = hist.get(key)
+        if not h or not h.get("c"): continue
+        fontes = [("Google", idx_google, g), ("Stooq", idx_stooq, st)] + ([("AwesomeAPI", idx_awesome, None)] if key == "BRL=X" else [])
+        for nome, fn, code in fontes:
+            try:
+                px, t = fn(code)
+                if not px or px <= 0: continue
+            except Exception:
+                continue
+            if h.get("t") and t <= h["t"]: break          # o que já temos é mais novo
+            day = (t + off) // 86400; last = h["d0"] + sum(h["dd"])
+            if day < last: break
+            if day == last: h["c"][-1] = float("%.5g" % px)
+            else: h["dd"].append(day - last); h["c"].append(float("%.5g" % px))
+            h["p"] = px; h["t"] = t
+            h["hi"] = max(h.get("hi") or px, px); h["lo"] = min(h.get("lo") or px, px)
+            feitos.append(f"{key} {px} ({nome})"); break
+    log.append("Índices e dólar pela reserva: " + (", ".join(feitos) if feitos else "nada mais novo"))
+
 # ---------- Câmbio (moedas em reais) ----------
 FX = ["USDBRL=X", "EURBRL=X", "GBPBRL=X", "ARSBRL=X", "CHFBRL=X", "JPYBRL=X", "CNYBRL=X", "CADBRL=X", "AUDBRL=X", "MXNBRL=X", "CLPBRL=X", "UYUBRL=X"]
 
@@ -296,6 +340,8 @@ def main():
             if "429" in str(e): break
     log.append(f"Câmbio: {okfx} moedas")
     if "USDBRL=X" in hist and "BRL=X" not in hist: hist["BRL=X"] = hist["USDBRL=X"]
+    try: idx_reserva(hist, log)
+    except Exception as e: log.append(f"Reserva de índices FALHOU: {str(e)[:120]}")
     log.append(f"Yahoo: {len(hist)} históricos ({len(syms) - len(ERR)} novos, {len(ERR)} falharam" + (f"; ex.: {ERR[0]}" if ERR else "") + ")")
     for r in br:
         h = hist.get(r["t"])
