@@ -1357,7 +1357,7 @@ function rfValue(x){const t0=new Date(x.d+"T12:00:00"),now=new Date();let end=no
   if(x.ix==="man"){const g=x.cur!=null?x.cur:x.v;return {gross:g,liq:g,days,venceu:end<now}}
   const a=annualRate(x.ix,x.x),gross=x.v*Math.pow(1+a,days/365),gain=gross-x.v,io=gain>0?gain*iofPct(days)/100:0,it=x.ir==="ir"&&gain>0?(gain-io)*IRtab(days)/100:0;return {gross,liq:gross-io-it,days,venceu:end<now}}
 function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps=positions();const open=ps.filter(o=>o.q>1e-9);const RF=CART.filter(x=>x.k==="rf");
-  const rows=open.map(o=>{const a=findAsset(o.t),r=a&&a.r,k=o.m==="us"?fx:1,px=r?r.p:o.cost/o.q,val=o.q*px*k,inv=o.cost*k,c=r&&r.c!=null?r.c:0;return {o,r,px,val,inv,res:val-inv,pc:inv?((val/inv)-1)*100:0,day:val*(c/100)/(1+c/100),avg:o.cost/o.q,cl:o.m==="us"?"Ações EUA":r&&r.k==="fii"?"FIIs":"Ações Brasil",name:o.t}}).sort((a,b)=>b.val-a.val);
+  const rows=open.map(o=>{const a=findAsset(o.t),r=a&&a.r,k=o.m==="us"?fx:1,px=r?r.p:o.cost/o.q,val=o.q*px*k,inv=o.cost*k,c=r&&r.c!=null?r.c:0;return {o,r,px,val,inv,res:val-inv,pc:inv?((val/inv)-1)*100:0,day:val*(c/100)/(1+c/100),avg:o.cost/o.q,cl:o.m==="us"?"Ações EUA":r&&r.k==="fii"?"FIIs":r&&r.k==="etf"?"ETFs":r&&r.k==="fi"?"Fundos e outros":"Ações Brasil",name:o.t}}).sort((a,b)=>b.val-a.val);
   const rfr=RF.map(x=>{const v=rfValue(x);return {x,...v,res:v.gross-x.v,cl:rfClass(x),name:x.nm||RFT[x.tp][0],val:v.gross}}).sort((a,b)=>b.val-a.val);
   const all=[...rows,...rfr];const tot=all.reduce((s,x)=>s+x.val,0),inv=rows.reduce((s,x)=>s+x.inv,0)+RF.reduce((s,x)=>s+x.v,0),day=rows.reduce((s,x)=>s+x.day,0),real=ps.reduce((s,o)=>s+o.real*(o.m==="us"?fx:1),0);
   const res=tot-inv,sgn=v=>v>0?"+":v<0?"−":"",brs=v=>sgn(v)+brl(Math.abs(v)).replace(/^-/,""),n=all.length;
@@ -1369,7 +1369,7 @@ function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps
   const dist=$("#cartDist");dist.hidden=!all.length;
   const paintBar=(bar,leg,segs)=>{if(bar.children.length!==segs.length)bar.innerHTML=segs.map(()=>"<i></i>").join("");segs.forEach(([t,v,c],i)=>{const el=bar.children[i];el.style.background=c;el.style.flexGrow=v/tot;el.title=t});leg.innerHTML=segs.map(([t,v,c])=>`<span><i class="dot" style="background:${c}"></i>${esc(t)} <b>${fmt(v/tot*100,1)}%</b></span>`).join("")};
   if(all.length){const top=all.slice(0,7),rest=all.slice(7).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--muted)"]);paintBar($("#cartBar"),$("#cartLeg"),sg);
-    const CLS=[["Ações Brasil","#1F5FD6"],["FIIs","#1FA3B0"],["Ações EUA","#8A4FD6"],["Renda fixa","#0B8A55"],["Tesouro Direto","#D98A1F"],["Fundos e outros","#A0674A"]];
+    const CLS=[["Ações Brasil","#1F5FD6"],["FIIs","#1FA3B0"],["ETFs","#D23B6E"],["Ações EUA","#8A4FD6"],["Renda fixa","#0B8A55"],["Tesouro Direto","#D98A1F"],["Fundos e outros","#A0674A"]];
     paintBar($("#cartBarC"),$("#cartLegC"),CLS.map(([c,col])=>[c,all.filter(x=>x.cl===c).reduce((s,x)=>s+x.val,0),col]).filter(x=>x[1]>0))}
   const H2=[...CART].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts);
   $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const dt=`<td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td>`,del=`<td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td>`;

@@ -65,6 +65,21 @@ def brapi():
     j = jget("https://brapi.dev/api/quote/list?type=stock&limit=1000")
     return {s["stock"]: s for s in j["stocks"]}
 
+def fundo_tipo(name):
+    n = (name or "").lower()
+    if "imobili" in n: return "fii", "Fundos imobiliários"
+    if "índice" in n or "indice" in n or " etf" in f" {n}": return "etf", "ETFs"
+    if "infra" in n or "incentivad" in n or "agro" in n: return "fi", "Fundos de infraestrutura e agro"
+    return "fi", "Outros fundos listados"
+
+def fundo_nome(name, t):
+    n = re.sub(r"\s+", " ", name or "").strip()
+    for pat in [r"\bClasse A De Cotas Do\b", r"\bFundo De Investimento Imobili[aá]rio\b", r"\bFundo De [IÍ]ndice\b", r"\bClasse De [IÍ]ndice\b.*$",
+                r"\b(De )?Resp(onsabilidade)?\.? Limitada\b", r"(^|\s)-?\s*Fii\s*-?(\s|$)", r"\bFic De .*$", r"\bFi Financeiro.*$", r"\bEm Cotas De.*$"]:
+        n = re.sub(pat, " ", n, flags=re.I)
+    n = re.sub(r"\s*-\s*$", "", re.sub(r"\s+", " ", n)).strip(" -")
+    return n or t
+
 def brapi_fii():
     # Fundos imobiliários (FIIs) negociados na B3: cota, variação do dia e volume
     j = jget("https://brapi.dev/api/quote/list?type=fund&limit=1000")
@@ -220,17 +235,19 @@ def main():
             ff = brapi_fii(); log.append(f"brapi FIIs: {len(ff)}")
         except Exception as e:
             ff = {}; log.append(f"brapi FIIs FALHOU: {e}")
-        if not ff: ff = {r["t"]: None for r in old_br if r.get("k") == "fii"}
+        if not ff: ff = {r["t"]: None for r in old_br if r.get("k") in ("fii", "etf", "fi")}
         have = {r["t"] for r in br}
         fiis = []
         for t, b in ff.items():
             if t in have: continue
             if b is None:
                 fiis.append(oldmap[t]); continue
+            if t == "IBOV11" or b["close"] > 20000: continue
             name = b.get("name") or oldmap.get(t, {}).get("n", "")
             if name and name.isupper(): name = name.title()
+            k, setor = fundo_tipo(name)
             vol = b.get("volume") or 0
-            fiis.append({"t": t, "n": name, "s": "Fundos imobiliários", "k": "fii", "p": round(b["close"], 2),
+            fiis.append({"t": t, "n": fundo_nome(name, t), "s": setor, "k": k, "p": round(b["close"], 2),
                          "c": round(b["change"], 2) if b.get("change") is not None else None,
                          "mc": round(b["market_cap"] / 1e6) if b.get("market_cap") else None,
                          "lq": round(vol * b["close"]) if vol else None})
