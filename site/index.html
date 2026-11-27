@@ -408,6 +408,23 @@ nav.tabs.glide a::after{display:none}
 @media (prefers-reduced-motion:reduce){#chartsvg .halo{display:none}.odo .oc{animation:none}#heat.hin .tile{animation:none}.gl{transition:none}}
 
 .panel.idx{padding-bottom:0}.panel.idx .spark{margin-bottom:0}
+/* --- carteira --- */
+.cartsum .chip b{font-variant-numeric:tabular-nums}
+#v-carteira>.panel{margin-top:14px}#cxCur:empty{display:none}.cartform label>span{display:inline}
+.cartsum .chip .sub{font-size:12px;font-weight:600}
+.dbarr{display:flex;gap:3px;height:14px;border-radius:999px;overflow:hidden;background:var(--surface2);margin-top:4px}
+.dbarr i{display:block;flex:0 1 0;min-width:0;transition:flex-grow .6s var(--ease)}
+.dleg{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:13px;color:var(--muted)}
+.dleg span{display:inline-flex;align-items:center;gap:6px}.dleg b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.dleg .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.cartform .seg{align-self:flex-start}
+.cartform .seg button{padding:7px 14px}
+#cxMsg{margin:10px 0 0;min-height:1em}#cxMsg.err{color:var(--down)}#cxMsg.ok{color:var(--up)}
+#cartH .del{all:unset;cursor:pointer;color:var(--muted);font-size:12.5px;padding:4px 8px;border-radius:6px;transition:background-color .15s,color .15s}
+#cartH .del:hover{background:var(--surface2);color:var(--ink)}#cartH .del.sure{background:var(--downbg);color:var(--down)}
+#cartH tr.new td,#cartT tr.new td{animation:flashin 1.2s var(--ease)}
+@keyframes flashin{from{background:var(--upbg)}}
+@media (prefers-reduced-motion:reduce){.dbarr i{transition:none}#cartH tr.new td,#cartT tr.new td{animation:none}}
 /* --- calculadora animada --- */
 .split{margin-top:16px}
 .split .sb{display:flex;gap:3px;height:12px;border-radius:999px;overflow:hidden;background:var(--surface2)}
@@ -454,7 +471,7 @@ html.menu-open header.top,html.menu-open header.top *{-webkit-app-region:no-drag
   <div class="brand"><h1>Painel Investimentos</h1><span class="asof" id="asof">Carregando dados…</span><button class="avatar" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="umenu" aria-label="Conta e preferências"></button></div>
   <div class="dbar" id="dbar" hidden><span id="dmsg"></span><button id="dbtn" class="primary" type="button"></button></div>
   <nav class="tabs" id="tabs">
-    <a href="#mercado">Visão geral</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#cambio">Câmbio</a><a href="#calc">Calculadora</a>
+    <a href="#mercado">Visão geral</a><a href="#carteira">Carteira</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#cambio">Câmbio</a><a href="#calc">Calculadora</a>
   </nav>
 </div><div class="tape" id="tape" aria-label="Cotações principais"><div class="in" id="tapeIn"></div></div></header>
 
@@ -478,6 +495,26 @@ html.menu-open header.top,html.menu-open header.top *{-webkit-app-region:no-drag
     <div class="panel"><h3>Maiores altas e baixas do dia: EUA</h3><p class="muted small">Entre as 200 maiores empresas por valor de mercado.</p><div id="movUS"></div></div>
   </div>
   <div class="note"><b>Sobre os dados.</b> Esta versão traz uma fotografia do mercado (veja a data no topo), não cotação em tempo real. Fontes: Fundamentus e brapi (B3), Nasdaq (EUA), Yahoo Finance (histórico de 1 ano), Banco Central (Selic, CDI, IPCA, dólar PTAX) e Tesouro Direto (taxas dos títulos). Nada aqui é recomendação de investimento.</div>
+</section>
+
+<section id="v-carteira" hidden>
+  <div class="hero"><h2 class="display">Carteira <span class="hdate" id="cartAsof"></span></h2><p class="lede" id="cartLede">Registre suas compras e vendas para acompanhar a posição, o preço médio e o resultado de cada ativo.</p></div>
+  <div class="chips cartsum" id="cartSum"></div>
+  <div class="panel cartdist" id="cartDist" hidden><h3>Distribuição</h3><div class="dbarr" id="cartBar"></div><div class="dleg" id="cartLeg"></div></div>
+  <div class="panel"><h3>Posição atual</h3><div class="tbox"><table id="cartT"></table></div><p class="muted small" id="cartEmpty" style="margin:12px 0 0"></p></div>
+  <div class="panel" id="cartAddP"><h3>Registrar operação</h3>
+    <div class="form cartform">
+      <label>Operação<div class="seg" id="cxSide"><button type="button" data-v="c" aria-pressed="true">Compra</button><button type="button" data-v="v" aria-pressed="false">Venda</button></div></label>
+      <label>Ativo<input id="cxT" list="allticks" placeholder="Ex.: PETR4, AAPL" autocomplete="off" spellcheck="false"></label>
+      <label>Quantidade<input id="cxQ" type="number" min="0" step="any" placeholder="0"></label>
+      <label><span>Preço por unidade <span id="cxCur"></span></span><input id="cxP" type="number" min="0" step="any" placeholder="0,00"></label>
+      <label>Data<input id="cxD" type="date"></label>
+      <label style="justify-content:flex-end"><button class="primary" id="cxAdd" type="button">Adicionar</button></label>
+    </div>
+    <p class="small" id="cxMsg" role="status"></p>
+  </div>
+  <div class="panel"><h3>Histórico de operações</h3><div class="tbox"><table id="cartH"></table></div><p class="muted small" id="cartHEmpty" style="margin:12px 0 0"></p>
+  <p class="muted small" style="margin:12px 0 0">Ações dos EUA ficam em dólar e são convertidas para reais pela cotação atual do dólar. Sem login, a carteira fica salva só neste aparelho; entrando com a conta Google pelo menu da sua foto, ela fica salva na nuvem.</p></div>
 </section>
 
 <section id="v-favoritos" hidden>
@@ -790,8 +827,8 @@ function setupTape(){const tp=$("#tape"),inn=$("#tapeIn");if(!tp||!TAPE)return;c
 addEventListener("resize",()=>{clearTimeout(setupTape._t);setupTape._t=setTimeout(setupTape,300)});
 {const tp=document.getElementById("tape");if(tp){const stop=()=>{tp.classList.add("hold");clearTimeout(tp._h)},go=()=>{clearTimeout(tp._h);tp._h=setTimeout(()=>tp.classList.remove("hold"),1500)};
   tp.addEventListener("pointerdown",stop);tp.addEventListener("pointerup",go);tp.addEventListener("pointercancel",go);tp.addEventListener("pointerleave",e=>{if(e.pointerType!=="mouse")go()})}}
-const VIEWS=["mercado","favoritos","b3","eua","acoes","cambio","calc"];
-function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";const was=route.cur;VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});if(was&&was!==v)animIn($("#v-"+v),VIEWS.indexOf(v)-VIEWS.indexOf(was));route.cur=v;document.querySelectorAll("#tabs a").forEach(a=>{const on=a.getAttribute("href")==="#"+v;a.setAttribute("aria-current",on?"page":"false");if(on){const n=a.parentElement;if(n.scrollWidth>n.clientWidth)n.scrollTo({left:a.offsetLeft-n.clientWidth/2+a.offsetWidth/2,behavior:was?"smooth":"auto"})}});store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav()}
+const VIEWS=["mercado","carteira","favoritos","b3","eua","acoes","cambio","calc"];
+function route(){let v=(location.hash||"#mercado").slice(1);if(!VIEWS.includes(v))v="mercado";const was=route.cur;VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});if(was&&was!==v)animIn($("#v-"+v),VIEWS.indexOf(v)-VIEWS.indexOf(was));route.cur=v;document.querySelectorAll("#tabs a").forEach(a=>{const on=a.getAttribute("href")==="#"+v;a.setAttribute("aria-current",on?"page":"false");if(on){const n=a.parentElement;if(n.scrollWidth>n.clientWidth)n.scrollTo({left:a.offsetLeft-n.clientWidth/2+a.offsetWidth/2,behavior:was?"smooth":"auto"})}});store.set("tab",v);if(v==="acoes")renderHeat();if(v==="favoritos")renderFav();if(v==="carteira")renderCart(true)}
 addEventListener("hashchange",route);
 
 // ---------- overview ----------
@@ -998,8 +1035,8 @@ async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let 
   A.onAuthStateChanged(auth,async u=>{CLOUD.user=u;ACCT.user=u;paintAcct();if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}if(!u)return;
     const ref=F.doc(db,"users",u.uid);try{const snap=await F.getDoc(ref);const nuvem=snap.exists()?(snap.data().favs||[]):[];
       // primeira vez: junta os favoritos deste aparelho com os da conta
-      applyCloudFavs([...new Set([...nuvem,...FAV])]);if(nuvem.length!==FAV.size)cloudSave()}catch(e){console.warn(e)}
-    CLOUD.unsub=F.onSnapshot(ref,sn=>{if(sn.exists()&&!sn.metadata.hasPendingWrites)applyCloudFavs(sn.data().favs||[])})});}
+      applyCloudFavs([...new Set([...nuvem,...FAV])]);if(nuvem.length!==FAV.size)cloudSave();const nc=snap.exists()?(snap.data().carteira||[]):[];const mc=mergeCart(nc,CART);applyCloudCart(mc);if(mc.length!==nc.length)saveCart()}catch(e){console.warn(e)}
+    CLOUD.unsub=F.onSnapshot(ref,sn=>{if(sn.exists()&&!sn.metadata.hasPendingWrites){applyCloudFavs(sn.data().favs||[]);if(sn.data().carteira)applyCloudCart(sn.data().carteira)}})});}
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
 const MOB=()=>innerWidth<=640;
@@ -1225,7 +1262,7 @@ getData().then(([b,u,h])=>{
     {k:"i",h:"Indústria",l:1,v:x=>x.i,r:x=>`<td class="l small">${esc(x.i)}</td>`},
     {k:"co",h:"País",l:1,v:x=>x.co,r:x=>`<td class="l small">${esc(x.co)}</td>`}]});
   $("#allticks").innerHTML=[...BR.slice(0,300),...US.slice(0,500)].map(r=>`<option value="${esc(r.t)}">${esc(r.n)}</option>`).join("");
-  if(!$("#v-acoes").hidden)renderHeat();
+  if(!$("#v-acoes").hidden)renderHeat();if(!$("#v-carteira").hidden)renderCart();
 }).catch(e=>{$("#asof").textContent="Não consegui carregar os dados das ações. Recarregue a página.";console.error(e)});
 // ---------- Animações v2 ----------
 // Destaque que desliza até a opção escolhida (abas, botões de período, cartões do popup)
@@ -1287,6 +1324,44 @@ function calcEnter(){const pn=["top","rf","cmp","jc","eq","meta"].map(x=>$("#c-"
 $("#ctabs").addEventListener("click",e=>{if(e.target.closest("button"))requestAnimationFrame(calcEnter)});
 addEventListener("hashchange",()=>{if(location.hash==="#calc")requestAnimationFrame(calcEnter)});
 glide($("#ctabs"),"[aria-pressed=true]","ink");
+// ---------- Carteira ----------
+let CART=store.get("carteira",[]);
+const CCOL=["#1F5FD6","#0B8A55","#D98A1F","#8A4FD6","#D23B6E","#1FA3B0","#7A8A2F","#A0674A"];
+const usdbrl=()=>(H["USDBRL=X"]&&H["USDBRL=X"].p)||(H["BRL=X"]&&H["BRL=X"].p)||MACRO.ptax||5;
+function findAsset(t){t=String(t||"").trim().toUpperCase();if(!t)return null;let r=BR.find(x=>x.t===t);if(r)return {r,m:"br"};r=US.find(x=>x.t===t);return r?{r,m:"us"}:null}
+function positions(){const P={};[...CART].sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.ts-b.ts).forEach(x=>{const k=x.m+"|"+x.t,o=P[k]||(P[k]={t:x.t,m:x.m,q:0,cost:0,real:0});
+  if(x.s==="c"){o.q+=x.q;o.cost+=x.q*x.p}else{const qs=Math.min(x.q,o.q);if(o.q>0){const avg=o.cost/o.q;o.real+=(x.p-avg)*qs;o.cost-=avg*qs;o.q-=qs}}});return Object.values(P)}
+function saveCart(){store.set("carteira",CART);if(CLOUD&&CLOUD.user)CLOUD.setDoc(CLOUD.doc(CLOUD.db,"users",CLOUD.user.uid),{carteira:CART,atualizado:Date.now()},{merge:true}).catch(e=>console.warn("carteira na nuvem:",e))}
+function applyCloudCart(list){CART=list;store.set("carteira",CART);if(!$("#v-carteira").hidden)renderCart()}
+function mergeCart(a,b){const m=new Map();[...a,...b].forEach(x=>m.set(x.id,x));return [...m.values()]}
+function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps=positions();const open=ps.filter(o=>o.q>1e-9);
+  const rows=open.map(o=>{const a=findAsset(o.t),r=a&&a.r,k=o.m==="us"?fx:1,px=r?r.p:o.cost/o.q,val=o.q*px*k,inv=o.cost*k,c=r&&r.c!=null?r.c:0;return {o,r,px,val,inv,res:val-inv,pc:inv?((val/inv)-1)*100:0,day:val*(c/100)/(1+c/100),avg:o.cost/o.q}}).sort((a,b)=>b.val-a.val);
+  const tot=rows.reduce((s,x)=>s+x.val,0),inv=rows.reduce((s,x)=>s+x.inv,0),day=rows.reduce((s,x)=>s+x.day,0),real=ps.reduce((s,o)=>s+o.real*(o.m==="us"?fx:1),0);
+  const res=tot-inv,sgn=v=>v>0?"+":v<0?"−":"",brs=v=>sgn(v)+brl(Math.abs(v)).replace(/^-/,"");
+  $("#cartSum").innerHTML=[["Patrimônio",brl(tot),open.length?`${open.length} ${open.length===1?"ativo":"ativos"}`:"nenhum ativo"],["Total investido",brl(inv),"custo pelo preço médio"],["Resultado",brs(res),inv?`<span class="${cls(res)}">${pct(res/inv*100)}</span>`:"–",cls(res)],["Hoje",brs(day),tot?`<span class="${cls(day)}">${pct(day/(tot-day)*100)}</span>`:"–",cls(day)]].map(([a,b,c,k])=>`<div class="chip">${a}<b class="${k||""}">${b}</b><span class="sub muted">${c}</span></div>`).join("")+(Math.abs(real)>0.005?`<div class="chip">Lucro realizado em vendas<b class="${cls(real)}">${brs(real)}</b><span class="sub muted">já embolsado</span></div>`:"");
+  $("#cartT").innerHTML=rows.length?`<thead><tr><th class="l">Ativo</th><th class="l">Nome</th><th class="n">Qtd</th><th class="n">Preço médio</th><th class="n">Preço atual</th><th class="n">Valor (R$)</th><th class="n">Resultado</th><th class="n">Peso</th></tr></thead><tbody>${rows.map(x=>{const f=x.o.m==="us"?usd:(v=>"R$ "+fmt(v));return `<tr data-t="${esc(x.o.t)}" data-m="${x.o.m}"><td class="l t">${esc(x.o.t)}</td><td class="l nm">${esc(x.r?x.r.n:"")}</td><td class="n">${fmt(x.o.q,x.o.q%1?4:0)}</td><td class="n">${f(x.avg)}</td><td class="n">${f(x.px)}</td><td class="n">${brl(x.val)}</td><td class="n ${cls(x.res)}">${brs(x.res)} <span class="small">(${pct(x.pc)})</span></td><td class="n">${fmt(tot?x.val/tot*100:0,1)}%</td></tr>`}).join("")}</tbody>`:"";
+  $("#cartEmpty").textContent=rows.length?"Clique num ativo para ver o gráfico.":"Sua carteira está vazia. Registre a primeira compra logo abaixo.";
+  const dist=$("#cartDist");dist.hidden=!rows.length;if(rows.length){const top=rows.slice(0,7),rest=rows.slice(7).reduce((s,x)=>s+x.val,0);const segs=top.map((x,i)=>[x.o.t,x.val,CCOL[i]]);if(rest>0)segs.push(["Outros",rest,"var(--muted)"]);
+    const bar=$("#cartBar"),old=bar.children.length===segs.length;if(!old)bar.innerHTML=segs.map(()=>"<i></i>").join("");segs.forEach(([t,v,c],i)=>{const el=bar.children[i];el.style.background=c;el.style.flexGrow=v/tot;el.title=t});
+    $("#cartLeg").innerHTML=segs.map(([t,v,c])=>`<span><i class="dot" style="background:${c}"></i>${esc(t)} <b>${fmt(v/tot*100,1)}%</b></span>`).join("")}
+  const H2=[...CART].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts);
+  $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const f=x.m==="us"?usd:(v=>"R$ "+fmt(v));return `<tr style="cursor:default" data-id="${esc(x.id)}"><td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td><td class="l"><span class="pill ${x.s==="c"?"up":"down"}">${x.s==="c"?"Compra":"Venda"}</span></td><td class="l t">${esc(x.t)}</td><td class="n">${fmt(x.q,x.q%1?4:0)}</td><td class="n">${f(x.p)}</td><td class="n">${f(x.q*x.p)}</td><td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td></tr>`}).join("")}</tbody>`:"";
+  $("#cartHEmpty").textContent=H2.length?"":"Nenhuma operação registrada ainda.";
+  $("#cartAsof").textContent=tot?"em reais":"";
+  if(enter&&!RM()){countUp($("#cartSum"),".chip b");[...$("#cartBar").children].forEach((b,i)=>{const g=getComputedStyle(b).flexGrow;b.animate([{flexGrow:0},{flexGrow:g}],{duration:800,delay:120+i*60,easing:"cubic-bezier(.23,1,.32,1)",fill:"backwards"})})}
+  if(CART._new){const id=CART._new;CART._new=null;const tr=$(`#cartH tr[data-id="${CSS.escape(id)}"]`);if(tr)tr.classList.add("new")}}
+segs("#cxSide",()=>{});glide($("#cxSide"),"[aria-pressed=true]","pill");
+$("#cxD").value=new Date(Date.now()-3*36e5).toISOString().slice(0,10);
+$("#cxT").addEventListener("input",()=>{const a=findAsset($("#cxT").value);$("#cxCur").textContent=a?(a.m==="us"?"(US$)":"(R$)"):"";if(a&&!$("#cxP").dataset.touched)$("#cxP").value=a.r.p});
+$("#cxP").addEventListener("input",()=>{$("#cxP").dataset.touched=$("#cxP").value?"1":""});
+$("#cxAdd").addEventListener("click",()=>{const msg=$("#cxMsg"),say=(t,k)=>{msg.textContent=t;msg.className="small "+k};
+  const a=findAsset($("#cxT").value),q=+$("#cxQ").value,p=+$("#cxP").value,d=$("#cxD").value,s=$("#cxSide [aria-pressed=true]").dataset.v;
+  if(!a)return say("Não encontrei esse ativo. Use o ticker, como PETR4 ou AAPL.","err");if(!(q>0))return say("Informe a quantidade.","err");if(!(p>0))return say("Informe o preço por unidade.","err");if(!d)return say("Informe a data.","err");
+  if(s==="v"){const o=positions().find(o=>o.t===a.r.t&&o.m===a.m);if(!o||o.q+1e-9<q)return say(`Você tem ${fmt(o?o.q:0,o&&o.q%1?4:0)} de ${a.r.t} para vender.`,"err")}
+  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);CART.push({id,t:a.r.t,m:a.m,s,q,p,d,ts:Date.now()});CART._new=id;saveCart();renderCart();
+  say(`${s==="c"?"Compra":"Venda"} de ${fmt(q,q%1?4:0)} ${a.r.t} registrada.`,"ok");$("#cxQ").value="";$("#cxP").dataset.touched="";$("#cxT").focus()});
+$("#cartH").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;if(!b.classList.contains("sure")){b.classList.add("sure");b.textContent="Confirmar";setTimeout(()=>{if(b.isConnected){b.classList.remove("sure");b.textContent="Excluir"}},3000);return}
+  CART=CART.filter(x=>x.id!==b.dataset.del);saveCart();renderCart()});
 </script>
 </body>
 </html>
