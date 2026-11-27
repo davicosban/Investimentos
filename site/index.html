@@ -978,9 +978,10 @@ function pointsFor(sym,k){const cs=CUSTOM[sym];const s=cs?null:series(sym);const
 let INTRA=null;
 function intraLocal(sym){const I=INTRA;if(!I||!I.p||!I.p[sym])return null;const r=BR.find(x=>x.t===sym)||US.find(x=>x.t===sym);
   const [y,mo,d]=I.data.split("-").map(Number);const ms=m=>Date.UTC(y,mo-1,d)+(m+180)*6e4;
-  const pts=I.m.map((m,i)=>[ms(m),I.p[sym][i]]).filter(p=>p[1]!=null);if(!pts.length)return null;
-  const us=!BR.includes(r);const open=us?11*60+30:10*60;
-  if(r&&r.c!=null&&r.p)pts.pc=r.p/(1+r.c/100);   // fechamento de ontem: linha pontilhada, como no Google
+  const us=sym==="^GSPC"||sym==="^IXIC"||(!!r&&!BR.includes(r));const open=us?11*60+30:10*60;
+  // só pontos do horário do pregão (rodadas da madrugada repetiam o preço de ontem)
+  const pts=I.m.map((m,i)=>[m,I.p[sym][i]]).filter(([m,v])=>v!=null&&m>=open-5&&m<=18*60+20).map(([m,v])=>[ms(m),v]);if(!pts.length)return null;
+  if(r&&r.c!=null&&r.p)pts.pc=r.p/(1+r.c/100);else if(!r&&H[sym]){const d=dchg(sym);if(d!=null)pts.pc=H[sym].p/(1+d/100)}   // fechamento de ontem: linha pontilhada, como no Google
   if(pts.length===1)pts.unshift([ms(open),pts[0][1]]);
   return pts}
 function maxChange(sym){const w=pointsFor(sym,"max");return w?(w[w.length-1][1]/w[0][1]-1)*100:null}
@@ -1296,13 +1297,19 @@ const ct=store.get("ctab","top");if(ct!=="top")$(`#ctabs button[data-v="${ct}"]`
 if(!location.hash){const t=store.get("tab","mercado");if(t!=="mercado")location.hash=t}
 route();
 // Site/app instalado pelo navegador: confere a cada 5 min se há dados novos e recarrega sozinho
-if(location.protocol==="https:"&&/github\.io$/.test(location.hostname)){setInterval(async()=>{if(document.hidden||!$("#modal").hidden)return;try{const j=await dget("asof.json");if(j.asof&&j.asof!==ASOF)location.reload()}catch(e){}},5*60*1000)}
+// Também confere na hora em que o app volta para a tela (no celular o relógio do app para quando ele fica em segundo plano)
+if(location.protocol==="https:"&&/github\.io$/.test(location.hostname)){let busy=0;
+  const fresh=async()=>{if(busy||document.hidden||!$("#modal").hidden||!$("#umenu").hidden)return;busy=1;
+    try{const j=await dget("asof.json");if(j.asof&&ASOF&&j.asof!==ASOF){try{sessionStorage.setItem("voltaY",String(scrollY))}catch(e){}location.reload();return}}catch(e){}busy=0};
+  setInterval(fresh,60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)fresh()});addEventListener("pageshow",e=>{if(e.persisted)fresh()});
+  addEventListener("focus",fresh);
+  try{const y=+sessionStorage.getItem("voltaY");if(y){sessionStorage.removeItem("voltaY");setTimeout(()=>scrollTo(0,y),900)}}catch(e){}}
 getData().then(([b,u,h])=>{
   b.forEach(r=>{if(r.n0==null){r.n0=r.n;r.n=nomePopular(r,0)}});u.forEach(r=>{if(r.n0==null){r.n0=r.n;r.n=nomePopular(r,1)}});
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}

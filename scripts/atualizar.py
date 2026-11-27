@@ -233,7 +233,7 @@ def macrohist():
         time.sleep(0.5)
     return out
 
-def intraday_local(br, us):
+def intraday_local(br, us, hist=None):
     """Monta o gráfico do dia com as próprias rodadas (~16 min): guarda a cotação de cada ativo a cada rodada."""
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
     hoje = now.strftime("%Y-%m-%d"); minuto = now.hour * 60 + now.minute
@@ -247,6 +247,8 @@ def intraday_local(br, us):
         d["m"] = d["m"][k:]; d["p"] = {t: v[k:] for t, v in d["p"].items()}
     if d["m"] and minuto - d["m"][-1] < 5: return   # rodada repetida em menos de 5 min
     ativos = [r for r in br[:300]] + sorted(us, key=lambda r: -(r.get("mc") or 0))[:300]
+    for k in ("^BVSP", "^GSPC", "^IXIC", "BRL=X"):   # índices e dólar também ganham gráfico do dia
+        if hist and hist.get(k) and hist[k].get("p"): ativos.append({"t": k, "p": hist[k]["p"]})
     n = len(d["m"]); d["m"].append(minuto)
     for r in ativos:
         if r.get("p") is None: continue
@@ -366,7 +368,7 @@ def main():
         h = hist.get(r["t"])
         if h and r["c"] is None and len(h["c"]) > 1: r["c"] = round((h["c"][-1] / h["c"][-2] - 1) * 100, 2)
     save("br.json", br); save("us.json", us); save("hist.json", hist)
-    try: intraday_local(br, us)
+    try: intraday_local(br, us, hist)
     except Exception as e: log.append(f"Intradiário local FALHOU: {e}")
     hx = os.path.join(SITE, "hx"); os.makedirs(hx, exist_ok=True)
     def hxsave(key, upd):
