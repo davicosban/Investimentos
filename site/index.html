@@ -367,6 +367,7 @@ section{animation:none}
  .subtabs::-webkit-scrollbar{display:none}
  .subtabs button{flex:0 0 auto;font-size:13px;padding:7px 12px}
 }
+.tape .fav .n{display:inline-flex;align-items:center;gap:5px}.tape .fav svg{color:var(--warn)}
 .tape.marquee{overflow:hidden}
 .tape.marquee .in{padding:0;margin:0;animation:tape var(--dur,40s) linear infinite}
 .tape.marquee .seq{display:flex;padding-left:18px}
@@ -650,11 +651,23 @@ const RM=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 // números que sobem até o valor (mantém prefixo, sufixo e casas decimais)
 function countUp(root,sel=".idx .val,.dhead .px"){if(!root||RM())return;root.querySelectorAll(sel).forEach(el=>{const t=el.textContent,m=t.match(/-?\d[\d.]*(?:,\d+)?/);if(!m)return;const n=parseFloat(m[0].replace(/\./g,"").replace(",","."));if(!isFinite(n)||n===0)return;const dec=(m[0].split(",")[1]||"").length,pre=t.slice(0,m.index),suf=t.slice(m.index+m[0].length),th=m[0].includes(".")||Math.abs(n)>=1000;const f=v=>pre+v.toLocaleString("pt-BR",{minimumFractionDigits:dec,maximumFractionDigits:dec,useGrouping:th})+suf;const t0=performance.now(),D=750;el.style.fontVariantNumeric="tabular-nums";const step=now=>{const k=Math.min(1,(now-t0)/D),e=1-Math.pow(1-k,3);el.textContent=k<1?f(n*e):t;if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)})}
 function animIn(el,dir){if(!el||RM())return;el.style.setProperty("--dx",(dir<0?-28:28)+"px");el.querySelectorAll("tbody tr:nth-child(-n+18)").forEach((r,i)=>r.style.setProperty("--i",i));el.classList.remove("view-in");void el.offsetWidth;el.classList.add("view-in");clearTimeout(el._vt);el._vt=setTimeout(()=>el.classList.remove("view-in"),1000);countUp(el)}
+let TAPEF="";
+// favoritos na fita (ações, moedas e índices/indicadores que ainda não estão nela)
+function buildTape(){const it=[];const base=new Set(["idx|^BVSP","idx|^GSPC","idx|^IXIC","idx|BRL=X","fx|BRL=X","macro|selic","macro|cdi","macro|ipca"]);
+  for(const k of FAV){if(base.has(k))continue;const [m,t]=k.split("|");let lbl,price,d=null;
+    if(m==="br"||m==="us"){const r=(m==="br"?BR:US).find(x=>x.t===t);if(!r)continue;lbl=t;price=m==="br"?"R$ "+fmt(r.p):usd(r.p);d=r.c}
+    else if(m==="fx"){const f=fxInfo(t);if(!f||!H[t])continue;lbl=f[2];price=fxR(H[t].p);d=dchg(t)}
+    else if(m==="idx"){if(!H[t])continue;lbl=IDXN[t]||t;price=fmt(H[t].p,0);d=dchg(t)}
+    else if(m==="macro"){const M=MACROS[t];if(!M)continue;lbl=M[0];const v={juro:((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100,poup:(Math.pow(1+MACRO.poupMes/100,12)-1)*100}[t];price=t==="ptax"?"R$ "+fmt(MACRO.ptax,4):v!=null?fmt(v)+"%":"";}
+    else continue;
+    it.push(`<button type="button" class="fav" data-t="${esc(t)}" data-m="${m}"><span class="n"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>${esc(lbl)}</span><span class="v">${price}</span>${d==null?"":`<span class="${cls(d)}">${pct(d)}</span>`}</button>`)}
+  TAPEF=it.join("");setupTape()}
 let TAPE="";
 // fita: anda sozinha quando não cabe na tela (letreiro); para ao tocar ou passar o mouse
-function setupTape(){const tp=$("#tape"),inn=$("#tapeIn");if(!tp||!TAPE)return;tp.classList.remove("marquee");inn.innerHTML=TAPE;
-  if(RM()||inn.scrollWidth<=tp.clientWidth+2)return;
-  const w=inn.scrollWidth;inn.innerHTML=`<div class="seq">${TAPE}</div><div class="seq" aria-hidden="true">${TAPE.replace(/<button /g,'<button tabindex="-1" ')}</div>`;
+function setupTape(){const tp=$("#tape"),inn=$("#tapeIn");if(!tp||!TAPE)return;const all=TAPE+TAPEF;tp.classList.remove("marquee");inn.innerHTML=all;
+  if(RM())return;
+  const w0=inn.scrollWidth,rep=Math.max(1,Math.ceil((tp.clientWidth+40)/w0)),seq=all.repeat(rep),w=w0*rep;
+  inn.innerHTML=`<div class="seq">${seq}</div><div class="seq" aria-hidden="true">${seq.replace(/<button /g,'<button tabindex="-1" ')}</div>`;
   inn.style.setProperty("--dur",Math.round(w/38)+"s");tp.classList.add("marquee")}
 addEventListener("resize",()=>{clearTimeout(setupTape._t);setupTape._t=setTimeout(setupTape,300)});
 {const tp=document.getElementById("tape");if(tp){const stop=()=>{tp.classList.add("hold");clearTimeout(tp._h)},go=()=>{clearTimeout(tp._h);tp._h=setTimeout(()=>tp.classList.remove("hold"),1500)};
@@ -683,7 +696,7 @@ function renderOverview(){
   {const it=[["^BVSP","Ibovespa",v=>fmt(v,0)],["^GSPC","S&P 500",v=>fmt(v,0)],["^IXIC","Nasdaq",v=>fmt(v,0)],["BRL=X","Dólar",v=>"R$ "+fmt(v,3)]];
    const t=it.filter(([k])=>H[k]).map(([k,n,f])=>{const d=dchg(k);return `<button type="button" data-t="${k}" data-m="idx"><span class="n">${n}</span><span class="v">${f(H[k].p)}</span><span class="${cls(d)}">${pct(d)}</span></button>`});
    t.push(`<button type="button" data-t="selic" data-m="macro"><span class="n">Selic</span><span class="v">${fmt(MACRO.selic)}%</span></button>`,`<button type="button" data-t="cdi" data-m="macro"><span class="n">CDI</span><span class="v">${fmt(MACRO.cdi)}%</span></button>`,`<button type="button" data-t="ipca" data-m="macro"><span class="n">IPCA 12m</span><span class="v">${fmt(MACRO.ipca12)}%</span></button>`);
-   TAPE=t.join("");setupTape()}
+   TAPE=t.join("");buildTape()}
   const chips=[["Selic",fmt(MACRO.selic)+"% a.a.","selic"],["CDI",fmt(MACRO.cdi)+"% a.a.","cdi"],["IPCA 12 meses",fmt(MACRO.ipca12)+"%","ipca"],["Juro real (CDI − IPCA)",fmt(((1+MACRO.cdi/100)/(1+MACRO.ipca12/100)-1)*100)+"% a.a.","juro"],["Poupança",fmt(poupA)+"% a.a.","poup"],["Dólar PTAX","R$ "+fmt(MACRO.ptax,4),"ptax"]];
   $("#macro").innerHTML=chips.map(([a,b,k])=>`<span class="chip" data-t="${k}" data-m="macro" role="button" tabindex="0" style="cursor:pointer">${a}<b>${b}</b></span>`).join("");
   const ib=dchg("^BVSP"),sp=dchg("^GSPC"),up=BR.slice(0,100).filter(r=>r.c>0).length,dn=BR.slice(0,100).filter(r=>r.c<0).length;
@@ -836,7 +849,7 @@ document.addEventListener("pointerleave",()=>drawHover(null));
 let FAV=new Set(store.get("favs",[]));
 const STAR='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>';
 function starBtn(m,t){const k=m+"|"+t,on=FAV.has(k);return `<button type="button" class="star" data-fav="${esc(k)}" aria-pressed="${on}" title="${on?"Remover dos favoritos":"Adicionar aos favoritos"}" aria-label="${on?"Remover dos favoritos":"Adicionar aos favoritos"}">${STAR}</button>`}
-function toggleFav(k){if(FAV.has(k))FAV.delete(k);else FAV.add(k);store.set("favs",[...FAV]);cloudSave();paintFav(k)}
+function toggleFav(k){if(FAV.has(k))FAV.delete(k);else FAV.add(k);store.set("favs",[...FAV]);cloudSave();paintFav(k);buildTape()}
 function paintFav(k){const on=FAV.has(k);
   document.querySelectorAll(`[data-fav="${CSS.escape(k)}"]`).forEach(b=>{b.setAttribute("aria-pressed",on);b.title=on?"Remover dos favoritos":"Adicionar aos favoritos"});
   if(!$("#v-favoritos").hidden)renderFav()}
@@ -855,7 +868,7 @@ function renderFav(){const rows=[];
 // Só no site (github.io) e só se existir firebase-config.json. A configuração do Firebase para web é pública; quem protege os dados são as regras do Firestore.
 let CLOUD=null;
 function cloudSave(){if(CLOUD&&CLOUD.user)CLOUD.setDoc(CLOUD.doc(CLOUD.db,"users",CLOUD.user.uid),{favs:[...FAV],atualizado:Date.now()},{merge:true}).catch(e=>console.warn("favoritos na nuvem:",e))}
-function applyCloudFavs(list){const old=FAV;FAV=new Set(list);store.set("favs",[...FAV]);new Set([...old,...FAV]).forEach(paintFav);if(!$("#v-favoritos").hidden)renderFav()}
+function applyCloudFavs(list){const old=FAV;FAV=new Set(list);store.set("favs",[...FAV]);new Set([...old,...FAV]).forEach(paintFav);buildTape();if(!$("#v-favoritos").hidden)renderFav()}
 async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let conf;try{const r=await fetch("firebase-config.json",{cache:"no-cache"});if(!r.ok)return;conf=await r.json()}catch(e){return}
   const V="10.12.2",B=`https://www.gstatic.com/firebasejs/${V}/`;
   const [{initializeApp},A,F]=await Promise.all([import(B+"firebase-app.js"),import(B+"firebase-auth.js"),import(B+"firebase-firestore.js")]);
