@@ -1,7 +1,7 @@
-name: Cotações a cada 15 min (pregão)
+name: Cotações a cada 5 min (pregão)
 
 # O agendamento do GitHub atrasa ou pula horários curtos. Por isso um único disparo
-# abre uma rodada longa que atualiza as cotações a cada 15 minutos sozinha.
+# abre uma rodada longa que atualiza as cotações a cada 5 minutos sozinha.
 # O app lê os dados direto do repositório (raw.githubusercontent.com), sem republicar o site.
 on:
   schedule:
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Atualizar a cada 15 minutos até 18h (Brasília)
+      - name: Atualizar a cada 5 minutos até 18h (Brasília)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -38,11 +38,11 @@ jobs:
             hora=$(TZ=America/Sao_Paulo date +%H%M)
             if [ "$hora" -ge 1815 ] || [ $(( $(date +%s) - inicio )) -gt 20400 ]; then echo "Fim do pregão"; break; fi
             git pull -q --rebase -X theirs origin main || true
-            python3 scripts/atualizar.py site --rapido || echo "rodada falhou, tento de novo em 15 min"
+            python3 scripts/atualizar.py site --rapido || echo "rodada falhou, tento de novo em 5 min"
             git add site/br.json site/us.json site/asof.json site/macro.json site/hist.json site/intraday.json site/index.html
             git diff --cached --quiet || git commit -q -m "Cotações $(TZ=America/Sao_Paulo date +%H:%M)"
             git push -q || (git pull -q --rebase -X theirs origin main && git push -q) || echo "push falhou"
-            sleep 900
+            sleep 300
           done
       - name: Rodada completa às 18h30 (Brasília), com histórico
         if: success() || failure()

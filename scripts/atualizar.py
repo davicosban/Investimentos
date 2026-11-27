@@ -245,7 +245,7 @@ def intraday_local(br, us, hist=None):
     if d["m"] and d["m"][0] < 600:   # limpa pontos de rodadas fora do pregão gravados antes desta regra
         k = next((i for i, m in enumerate(d["m"]) if m >= 600), len(d["m"]))
         d["m"] = d["m"][k:]; d["p"] = {t: v[k:] for t, v in d["p"].items()}
-    if d["m"] and minuto - d["m"][-1] < 5: return   # rodada repetida em menos de 5 min
+    if d["m"] and minuto - d["m"][-1] < 3: return   # rodada repetida em menos de 3 min
     ativos = [r for r in br[:300]] + sorted(us, key=lambda r: -(r.get("mc") or 0))[:300]
     for k in ("^BVSP", "^GSPC", "^IXIC", "BRL=X"):   # índices e dólar também ganham gráfico do dia
         if hist and hist.get(k) and hist[k].get("p"): ativos.append({"t": k, "p": hist[k]["p"]})
