@@ -259,7 +259,9 @@ body{font-size:14px;letter-spacing:-.005em;background-image:none;font-feature-se
 input,select,textarea{caret-color:var(--accent)}
 a{color:var(--accent);text-underline-offset:3px}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
-header.top{background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px 0}
+header.top{background:var(--bg);padding-block:10px 0}
+header.top .topin{border-bottom:1px solid var(--line)}
+header.top .tape{margin-top:0}
 .brand h1{font-weight:600;font-size:15px;letter-spacing:-.01em}
 .brand .asof{font-size:12px;padding-left:31px}
 nav.tabs{background:transparent;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0;gap:4px;border-radius:0;flex-basis:100%;order:3}
@@ -383,8 +385,7 @@ section{animation:none}
   <nav class="tabs" id="tabs">
     <a href="#mercado">Visão geral</a><a href="#favoritos">Favoritos</a><a href="#b3">Bolsa Brasil</a><a href="#eua">Bolsa EUA</a><a href="#acoes">Ação a ação</a><a href="#cambio">Câmbio</a><a href="#calc">Calculadora</a>
   </nav>
-</div></header>
-<div class="tape" id="tape" aria-label="Cotações principais"><div class="in" id="tapeIn"></div></div>
+</div><div class="tape" id="tape" aria-label="Cotações principais"><div class="in" id="tapeIn"></div></div></header>
 
 <main class="wrap">
 <section id="v-mercado">
