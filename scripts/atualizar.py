@@ -65,6 +65,11 @@ def brapi():
     j = jget("https://brapi.dev/api/quote/list?type=stock&limit=1000")
     return {s["stock"]: s for s in j["stocks"]}
 
+def brapi_fii():
+    # Fundos imobiliários (FIIs) negociados na B3: cota, variação do dia e volume
+    j = jget("https://brapi.dev/api/quote/list?type=fund&limit=1000")
+    return {s["stock"]: s for s in j["stocks"] if s.get("stock", "").endswith("11") and s.get("close")}
+
 # ---------- EUA ----------
 def nasdaq():
     j = jget("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&download=true")
@@ -210,6 +215,27 @@ def main():
                     if k in oldmap[t]: row[k] = oldmap[t][k]
             br.append(row)
         br.sort(key=lambda r: -(r["lq"] or 0))
+        # FIIs vão no fim da lista (não entram nos rankings de ações), com setor próprio
+        try:
+            ff = brapi_fii(); log.append(f"brapi FIIs: {len(ff)}")
+        except Exception as e:
+            ff = {}; log.append(f"brapi FIIs FALHOU: {e}")
+        if not ff: ff = {r["t"]: None for r in old_br if r.get("k") == "fii"}
+        have = {r["t"] for r in br}
+        fiis = []
+        for t, b in ff.items():
+            if t in have: continue
+            if b is None:
+                fiis.append(oldmap[t]); continue
+            name = b.get("name") or oldmap.get(t, {}).get("n", "")
+            if name and name.isupper(): name = name.title()
+            vol = b.get("volume") or 0
+            fiis.append({"t": t, "n": name, "s": "Fundos imobiliários", "k": "fii", "p": round(b["close"], 2),
+                         "c": round(b["change"], 2) if b.get("change") is not None else None,
+                         "mc": round(b["market_cap"] / 1e6) if b.get("market_cap") else None,
+                         "lq": round(vol * b["close"]) if vol else None})
+        fiis.sort(key=lambda r: -(r["lq"] or 0))
+        br += fiis
     # EUA
     try:
         us = nasdaq(); log.append(f"Nasdaq: {len(us)} ações")

@@ -410,6 +410,7 @@ nav.tabs.glide a::after{display:none}
 .panel.idx{padding-bottom:0}.panel.idx .spark{margin-bottom:0}
 /* --- carteira --- */
 .cartsum .chip b{font-variant-numeric:tabular-nums}
+#cartRF .upd{width:110px;padding:5px 8px;font-size:13px;text-align:right}#cartAddP>.seg button{padding:7px 14px}
 #v-carteira>.panel{margin-top:14px}#cxCur:empty{display:none}.cartform label>span{display:inline}
 .cartsum .chip .sub{font-size:12px;font-weight:600}
 .dbarr{display:flex;gap:3px;height:14px;border-radius:999px;overflow:hidden;background:var(--surface2);margin-top:4px}
@@ -498,18 +499,32 @@ html.menu-open header.top,html.menu-open header.top *{-webkit-app-region:no-drag
 </section>
 
 <section id="v-carteira" hidden>
-  <div class="hero"><h2 class="display">Carteira <span class="hdate" id="cartAsof"></span></h2><p class="lede" id="cartLede">Registre suas compras e vendas para acompanhar a posição, o preço médio e o resultado de cada ativo.</p></div>
+  <div class="hero"><h2 class="display">Carteira <span class="hdate" id="cartAsof"></span></h2><p class="lede" id="cartLede">Ações, FIIs, renda fixa, Tesouro e fundos num lugar só, com posição, preço médio e resultado de cada investimento.</p></div>
   <div class="chips cartsum" id="cartSum"></div>
-  <div class="panel cartdist" id="cartDist" hidden><h3>Distribuição</h3><div class="dbarr" id="cartBar"></div><div class="dleg" id="cartLeg"></div></div>
-  <div class="panel"><h3>Posição atual</h3><div class="tbox"><table id="cartT"></table></div><p class="muted small" id="cartEmpty" style="margin:12px 0 0"></p></div>
+  <div class="panel cartdist" id="cartDist" hidden><h3>Distribuição por classe</h3><div class="dbarr" id="cartBarC"></div><div class="dleg" id="cartLegC"></div><h3 style="margin-top:18px">Por ativo</h3><div class="dbarr" id="cartBar"></div><div class="dleg" id="cartLeg"></div></div>
+  <div class="panel"><h3>Ações e FIIs</h3><div class="tbox"><table id="cartT"></table></div><p class="muted small" id="cartEmpty" style="margin:12px 0 0"></p></div>
+  <div class="panel" id="cartRFP" hidden><h3>Renda fixa, Tesouro e fundos</h3><div class="tbox"><table id="cartRF"></table></div><p class="muted small" style="margin:12px 0 0">O valor é atualizado sozinho pela taxa contratada, usando a Selic, o CDI e o IPCA mais recentes do Banco Central. "Líquido" já desconta IR e IOF se você resgatasse hoje. Fundos e outros: você informa o valor atual.</p></div>
   <div class="panel" id="cartAddP"><h3>Registrar operação</h3>
-    <div class="form cartform">
+    <div class="seg" id="cxKind" style="margin-bottom:14px"><button type="button" data-v="acao" aria-pressed="true">Ação ou FII</button><button type="button" data-v="rf" aria-pressed="false">Renda fixa, Tesouro e fundos</button></div>
+    <div class="form cartform" id="cxFormA">
       <label>Operação<div class="seg" id="cxSide"><button type="button" data-v="c" aria-pressed="true">Compra</button><button type="button" data-v="v" aria-pressed="false">Venda</button></div></label>
       <label>Ativo<input id="cxT" list="allticks" placeholder="Ex.: PETR4, AAPL" autocomplete="off" spellcheck="false"></label>
       <label>Quantidade<input id="cxQ" type="number" min="0" step="any" placeholder="0"></label>
       <label><span>Preço por unidade <span id="cxCur"></span></span><input id="cxP" type="number" min="0" step="any" placeholder="0,00"></label>
       <label>Data<input id="cxD" type="date"></label>
       <label style="justify-content:flex-end"><button class="primary" id="cxAdd" type="button">Adicionar</button></label>
+    </div>
+    <div class="form cartform" id="cxFormR" hidden>
+      <label>Tipo<select id="rxTipo"><option value="cdb">CDB, LC ou RDB</option><option value="lci">LCI ou LCA</option><option value="tsel">Tesouro Selic</option><option value="tpre">Tesouro Prefixado</option><option value="tipca">Tesouro IPCA+</option><option value="deb">Debênture</option><option value="cri">CRI, CRA ou debênture incentivada</option><option value="poup">Poupança</option><option value="fundo">Fundo, previdência ou outro</option></select></label>
+      <label>Nome ou emissor<input id="rxNome" placeholder="Ex.: CDB Banco Inter" autocomplete="off"></label>
+      <label>Rentabilidade<select id="rxIx"><option value="pos">% do CDI</option><option value="selic">Selic + taxa</option><option value="pre">Prefixado (% a.a.)</option><option value="ipca">IPCA + taxa</option><option value="poup">Poupança</option><option value="man">Eu informo o valor atual</option></select></label>
+      <label id="rxTaxaL"><span>Taxa <span id="rxTaxaU" class="muted">(% do CDI)</span></span><input id="rxTaxa" type="number" step="0.01" value="100"></label>
+      <label id="rxCurL" hidden>Valor atual (R$)<input id="rxCur" type="number" step="0.01" min="0" placeholder="0,00"></label>
+      <label>Valor aplicado (R$)<input id="rxVal" type="number" step="0.01" min="0" placeholder="0,00"></label>
+      <label>Data da aplicação<input id="rxD" type="date"></label>
+      <label>Vencimento (opcional)<input id="rxV" type="date"></label>
+      <label>Imposto de renda<select id="rxIR"><option value="ir">Tem IR regressivo</option><option value="isento">Isento</option></select></label>
+      <label style="justify-content:flex-end"><button class="primary" id="rxAdd" type="button">Adicionar</button></label>
     </div>
     <p class="small" id="cxMsg" role="status"></p>
   </div>
@@ -1329,26 +1344,40 @@ let CART=store.get("carteira",[]);
 const CCOL=["#1F5FD6","#0B8A55","#D98A1F","#8A4FD6","#D23B6E","#1FA3B0","#7A8A2F","#A0674A"];
 const usdbrl=()=>(H["USDBRL=X"]&&H["USDBRL=X"].p)||(H["BRL=X"]&&H["BRL=X"].p)||MACRO.ptax||5;
 function findAsset(t){t=String(t||"").trim().toUpperCase();if(!t)return null;let r=BR.find(x=>x.t===t);if(r)return {r,m:"br"};r=US.find(x=>x.t===t);return r?{r,m:"us"}:null}
-function positions(){const P={};[...CART].sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.ts-b.ts).forEach(x=>{const k=x.m+"|"+x.t,o=P[k]||(P[k]={t:x.t,m:x.m,q:0,cost:0,real:0});
+function positions(){const P={};CART.filter(x=>x.k!=="rf").sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.ts-b.ts).forEach(x=>{const k=x.m+"|"+x.t,o=P[k]||(P[k]={t:x.t,m:x.m,q:0,cost:0,real:0});
   if(x.s==="c"){o.q+=x.q;o.cost+=x.q*x.p}else{const qs=Math.min(x.q,o.q);if(o.q>0){const avg=o.cost/o.q;o.real+=(x.p-avg)*qs;o.cost-=avg*qs;o.q-=qs}}});return Object.values(P)}
 function saveCart(){store.set("carteira",CART);if(CLOUD&&CLOUD.user)CLOUD.setDoc(CLOUD.doc(CLOUD.db,"users",CLOUD.user.uid),{carteira:CART,atualizado:Date.now()},{merge:true}).catch(e=>console.warn("carteira na nuvem:",e))}
 function applyCloudCart(list){CART=list;store.set("carteira",CART);if(!$("#v-carteira").hidden)renderCart()}
 function mergeCart(a,b){const m=new Map();[...a,...b].forEach(x=>m.set(x.id,x));return [...m.values()]}
-function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps=positions();const open=ps.filter(o=>o.q>1e-9);
-  const rows=open.map(o=>{const a=findAsset(o.t),r=a&&a.r,k=o.m==="us"?fx:1,px=r?r.p:o.cost/o.q,val=o.q*px*k,inv=o.cost*k,c=r&&r.c!=null?r.c:0;return {o,r,px,val,inv,res:val-inv,pc:inv?((val/inv)-1)*100:0,day:val*(c/100)/(1+c/100),avg:o.cost/o.q}}).sort((a,b)=>b.val-a.val);
-  const tot=rows.reduce((s,x)=>s+x.val,0),inv=rows.reduce((s,x)=>s+x.inv,0),day=rows.reduce((s,x)=>s+x.day,0),real=ps.reduce((s,o)=>s+o.real*(o.m==="us"?fx:1),0);
-  const res=tot-inv,sgn=v=>v>0?"+":v<0?"−":"",brs=v=>sgn(v)+brl(Math.abs(v)).replace(/^-/,"");
-  $("#cartSum").innerHTML=[["Patrimônio",brl(tot),open.length?`${open.length} ${open.length===1?"ativo":"ativos"}`:"nenhum ativo"],["Total investido",brl(inv),"custo pelo preço médio"],["Resultado",brs(res),inv?`<span class="${cls(res)}">${pct(res/inv*100)}</span>`:"–",cls(res)],["Hoje",brs(day),tot?`<span class="${cls(day)}">${pct(day/(tot-day)*100)}</span>`:"–",cls(day)]].map(([a,b,c,k])=>`<div class="chip">${a}<b class="${k||""}">${b}</b><span class="sub muted">${c}</span></div>`).join("")+(Math.abs(real)>0.005?`<div class="chip">Lucro realizado em vendas<b class="${cls(real)}">${brs(real)}</b><span class="sub muted">já embolsado</span></div>`:"");
+const RFT={cdb:["CDB, LC ou RDB","pos",100,"ir"],lci:["LCI ou LCA","pos",90,"isento"],tsel:["Tesouro Selic","selic",0.05,"ir"],tpre:["Tesouro Prefixado","pre",13,"ir"],tipca:["Tesouro IPCA+","ipca",7,"ir"],deb:["Debênture","ipca",7,"ir"],cri:["CRI, CRA ou incentivada","ipca",7,"isento"],poup:["Poupança","poup",0,"isento"],fundo:["Fundo ou outro","man",0,"ir"]};
+const IXU={pos:"(% do CDI)",selic:"(% a.a. acima da Selic)",pre:"(% a.a.)",ipca:"(% a.a. acima do IPCA)"};
+const rfClass=x=>/^t/.test(x.tp)?"Tesouro Direto":x.tp==="fundo"?"Fundos e outros":"Renda fixa";
+function rfDesc(x){return x.ix==="pos"?fmt(x.x,0)+"% do CDI":x.ix==="pre"?fmt(x.x)+"% a.a.":x.ix==="ipca"?"IPCA + "+fmt(x.x)+"%":x.ix==="selic"?"Selic + "+fmt(x.x,2)+"%":x.ix==="poup"?"Poupança":"Valor informado"}
+function rfValue(x){const t0=new Date(x.d+"T12:00:00"),now=new Date();let end=now;if(x.venc){const v=new Date(x.venc+"T12:00:00");if(v<end)end=v}const days=Math.max(0,Math.floor((end-t0)/864e5));
+  if(x.ix==="man"){const g=x.cur!=null?x.cur:x.v;return {gross:g,liq:g,days,venceu:end<now}}
+  const a=annualRate(x.ix,x.x),gross=x.v*Math.pow(1+a,days/365),gain=gross-x.v,io=gain>0?gain*iofPct(days)/100:0,it=x.ir==="ir"&&gain>0?(gain-io)*IRtab(days)/100:0;return {gross,liq:gross-io-it,days,venceu:end<now}}
+function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps=positions();const open=ps.filter(o=>o.q>1e-9);const RF=CART.filter(x=>x.k==="rf");
+  const rows=open.map(o=>{const a=findAsset(o.t),r=a&&a.r,k=o.m==="us"?fx:1,px=r?r.p:o.cost/o.q,val=o.q*px*k,inv=o.cost*k,c=r&&r.c!=null?r.c:0;return {o,r,px,val,inv,res:val-inv,pc:inv?((val/inv)-1)*100:0,day:val*(c/100)/(1+c/100),avg:o.cost/o.q,cl:o.m==="us"?"Ações EUA":r&&r.k==="fii"?"FIIs":"Ações Brasil",name:o.t}}).sort((a,b)=>b.val-a.val);
+  const rfr=RF.map(x=>{const v=rfValue(x);return {x,...v,res:v.gross-x.v,cl:rfClass(x),name:x.nm||RFT[x.tp][0],val:v.gross}}).sort((a,b)=>b.val-a.val);
+  const all=[...rows,...rfr];const tot=all.reduce((s,x)=>s+x.val,0),inv=rows.reduce((s,x)=>s+x.inv,0)+RF.reduce((s,x)=>s+x.v,0),day=rows.reduce((s,x)=>s+x.day,0),real=ps.reduce((s,o)=>s+o.real*(o.m==="us"?fx:1),0);
+  const res=tot-inv,sgn=v=>v>0?"+":v<0?"−":"",brs=v=>sgn(v)+brl(Math.abs(v)).replace(/^-/,""),n=all.length;
+  $("#cartSum").innerHTML=[["Patrimônio",brl(tot),n?`${n} ${n===1?"investimento":"investimentos"}`:"nenhum investimento"],["Total investido",brl(inv),"o que saiu do seu bolso"],["Resultado",brs(res),inv?`<span class="${cls(res)}">${pct(res/inv*100)}</span>`:"–",cls(res)],["Hoje (bolsa)",brs(day),tot?`<span class="${cls(day)}">${pct(day/(tot-day)*100)}</span>`:"–",cls(day)]].map(([a,b,c,k])=>`<div class="chip">${a}<b class="${k||""}">${b}</b><span class="sub muted">${c}</span></div>`).join("")+(Math.abs(real)>0.005?`<div class="chip">Lucro realizado em vendas<b class="${cls(real)}">${brs(real)}</b><span class="sub muted">já embolsado</span></div>`:"");
   $("#cartT").innerHTML=rows.length?`<thead><tr><th class="l">Ativo</th><th class="l">Nome</th><th class="n">Qtd</th><th class="n">Preço médio</th><th class="n">Preço atual</th><th class="n">Valor (R$)</th><th class="n">Resultado</th><th class="n">Peso</th></tr></thead><tbody>${rows.map(x=>{const f=x.o.m==="us"?usd:(v=>"R$ "+fmt(v));return `<tr data-t="${esc(x.o.t)}" data-m="${x.o.m}"><td class="l t">${esc(x.o.t)}</td><td class="l nm">${esc(x.r?x.r.n:"")}</td><td class="n">${fmt(x.o.q,x.o.q%1?4:0)}</td><td class="n">${f(x.avg)}</td><td class="n">${f(x.px)}</td><td class="n">${brl(x.val)}</td><td class="n ${cls(x.res)}">${brs(x.res)} <span class="small">(${pct(x.pc)})</span></td><td class="n">${fmt(tot?x.val/tot*100:0,1)}%</td></tr>`}).join("")}</tbody>`:"";
-  $("#cartEmpty").textContent=rows.length?"Clique num ativo para ver o gráfico.":"Sua carteira está vazia. Registre a primeira compra logo abaixo.";
-  const dist=$("#cartDist");dist.hidden=!rows.length;if(rows.length){const top=rows.slice(0,7),rest=rows.slice(7).reduce((s,x)=>s+x.val,0);const segs=top.map((x,i)=>[x.o.t,x.val,CCOL[i]]);if(rest>0)segs.push(["Outros",rest,"var(--muted)"]);
-    const bar=$("#cartBar"),old=bar.children.length===segs.length;if(!old)bar.innerHTML=segs.map(()=>"<i></i>").join("");segs.forEach(([t,v,c],i)=>{const el=bar.children[i];el.style.background=c;el.style.flexGrow=v/tot;el.title=t});
-    $("#cartLeg").innerHTML=segs.map(([t,v,c])=>`<span><i class="dot" style="background:${c}"></i>${esc(t)} <b>${fmt(v/tot*100,1)}%</b></span>`).join("")}
+  $("#cartEmpty").textContent=rows.length?"Clique num ativo para ver o gráfico.":RF.length?"Nenhuma ação ou FII na carteira.":"Sua carteira está vazia. Registre o primeiro investimento logo abaixo.";
+  $("#cartRFP").hidden=!rfr.length;
+  $("#cartRF").innerHTML=rfr.length?`<thead><tr><th class="l">Investimento</th><th class="l">Tipo</th><th class="l">Rentabilidade</th><th class="l">Aplicado em</th><th class="l">Vencimento</th><th class="n">Aplicado</th><th class="n">Valor bruto</th><th class="n">Líquido</th><th class="n">Resultado</th></tr></thead><tbody>${rfr.map(y=>{const x=y.x,dt=d=>d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"–";return `<tr style="cursor:default"><td class="l t">${esc(y.name)}</td><td class="l small">${esc(RFT[x.tp][0])}</td><td class="l">${esc(rfDesc(x))}</td><td class="l">${dt(x.d)}</td><td class="l">${dt(x.venc)}${y.venceu?' <span class="pill">venceu</span>':""}</td><td class="n">${brl(x.v)}</td><td class="n">${x.ix==="man"?`<input class="upd" type="number" step="0.01" data-upd="${esc(x.id)}" value="${(x.cur!=null?x.cur:x.v).toFixed(2)}" aria-label="Valor atual de ${esc(y.name)}">`:brl(y.gross)}</td><td class="n">${brl(y.liq)}</td><td class="n ${cls(y.res)}">${brs(y.res)} <span class="small">(${pct(x.v?y.res/x.v*100:0)})</span></td></tr>`}).join("")}</tbody>`:"";
+  const dist=$("#cartDist");dist.hidden=!all.length;
+  const paintBar=(bar,leg,segs)=>{if(bar.children.length!==segs.length)bar.innerHTML=segs.map(()=>"<i></i>").join("");segs.forEach(([t,v,c],i)=>{const el=bar.children[i];el.style.background=c;el.style.flexGrow=v/tot;el.title=t});leg.innerHTML=segs.map(([t,v,c])=>`<span><i class="dot" style="background:${c}"></i>${esc(t)} <b>${fmt(v/tot*100,1)}%</b></span>`).join("")};
+  if(all.length){const top=all.slice(0,7),rest=all.slice(7).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--muted)"]);paintBar($("#cartBar"),$("#cartLeg"),sg);
+    const CLS=[["Ações Brasil","#1F5FD6"],["FIIs","#1FA3B0"],["Ações EUA","#8A4FD6"],["Renda fixa","#0B8A55"],["Tesouro Direto","#D98A1F"],["Fundos e outros","#A0674A"]];
+    paintBar($("#cartBarC"),$("#cartLegC"),CLS.map(([c,col])=>[c,all.filter(x=>x.cl===c).reduce((s,x)=>s+x.val,0),col]).filter(x=>x[1]>0))}
   const H2=[...CART].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts);
-  $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const f=x.m==="us"?usd:(v=>"R$ "+fmt(v));return `<tr style="cursor:default" data-id="${esc(x.id)}"><td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td><td class="l"><span class="pill ${x.s==="c"?"up":"down"}">${x.s==="c"?"Compra":"Venda"}</span></td><td class="l t">${esc(x.t)}</td><td class="n">${fmt(x.q,x.q%1?4:0)}</td><td class="n">${f(x.p)}</td><td class="n">${f(x.q*x.p)}</td><td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td></tr>`}).join("")}</tbody>`:"";
+  $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const dt=`<td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td>`,del=`<td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td>`;
+    if(x.k==="rf")return `<tr style="cursor:default" data-id="${esc(x.id)}">${dt}<td class="l"><span class="pill up">Aplicação</span></td><td class="l t">${esc(x.nm||RFT[x.tp][0])}</td><td class="n">–</td><td class="n">–</td><td class="n">${brl(x.v)}</td>${del}</tr>`;
+    const f=x.m==="us"?usd:(v=>"R$ "+fmt(v));return `<tr style="cursor:default" data-id="${esc(x.id)}">${dt}<td class="l"><span class="pill ${x.s==="c"?"up":"down"}">${x.s==="c"?"Compra":"Venda"}</span></td><td class="l t">${esc(x.t)}</td><td class="n">${fmt(x.q,x.q%1?4:0)}</td><td class="n">${f(x.p)}</td><td class="n">${f(x.q*x.p)}</td>${del}</tr>`}).join("")}</tbody>`:"";
   $("#cartHEmpty").textContent=H2.length?"":"Nenhuma operação registrada ainda.";
   $("#cartAsof").textContent=tot?"em reais":"";
-  if(enter&&!RM()){countUp($("#cartSum"),".chip b");[...$("#cartBar").children].forEach((b,i)=>{const g=getComputedStyle(b).flexGrow;b.animate([{flexGrow:0},{flexGrow:g}],{duration:800,delay:120+i*60,easing:"cubic-bezier(.23,1,.32,1)",fill:"backwards"})})}
+  if(enter&&!RM()){countUp($("#cartSum"),".chip b");document.querySelectorAll("#cartBar i,#cartBarC i").forEach((b,i)=>{const g=getComputedStyle(b).flexGrow;b.animate([{flexGrow:0},{flexGrow:g}],{duration:800,delay:120+(i%8)*60,easing:"cubic-bezier(.23,1,.32,1)",fill:"backwards"})})}
   if(CART._new){const id=CART._new;CART._new=null;const tr=$(`#cartH tr[data-id="${CSS.escape(id)}"]`);if(tr)tr.classList.add("new")}}
 segs("#cxSide",()=>{});glide($("#cxSide"),"[aria-pressed=true]","pill");
 $("#cxD").value=new Date(Date.now()-3*36e5).toISOString().slice(0,10);
@@ -1360,6 +1389,19 @@ $("#cxAdd").addEventListener("click",()=>{const msg=$("#cxMsg"),say=(t,k)=>{msg.
   if(s==="v"){const o=positions().find(o=>o.t===a.r.t&&o.m===a.m);if(!o||o.q+1e-9<q)return say(`Você tem ${fmt(o?o.q:0,o&&o.q%1?4:0)} de ${a.r.t} para vender.`,"err")}
   const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);CART.push({id,t:a.r.t,m:a.m,s,q,p,d,ts:Date.now()});CART._new=id;saveCart();renderCart();
   say(`${s==="c"?"Compra":"Venda"} de ${fmt(q,q%1?4:0)} ${a.r.t} registrada.`,"ok");$("#cxQ").value="";$("#cxP").dataset.touched="";$("#cxT").focus()});
+segs("#cxKind",v=>{$("#cxFormA").hidden=v!=="acao";$("#cxFormR").hidden=v==="acao";$("#cxMsg").textContent=""});glide($("#cxKind"),"[aria-pressed=true]","pill");
+$("#rxD").value=$("#cxD").value;
+function rxSync(){const ix=$("#rxIx").value,man=ix==="man",poup=ix==="poup";$("#rxTaxaL").hidden=man||poup;$("#rxCurL").hidden=!man;$("#rxTaxaU").textContent=IXU[ix]||""}
+$("#rxTipo").addEventListener("change",()=>{const d=RFT[$("#rxTipo").value];$("#rxIx").value=d[1];$("#rxTaxa").value=d[2];$("#rxIR").value=d[3];rxSync()});
+$("#rxIx").addEventListener("change",rxSync);rxSync();
+$("#rxAdd").addEventListener("click",()=>{const msg=$("#cxMsg"),say=(t,k)=>{msg.textContent=t;msg.className="small "+k};
+  const tp=$("#rxTipo").value,ix=$("#rxIx").value,v=+$("#rxVal").value,d=$("#rxD").value,venc=$("#rxV").value||null,x=+$("#rxTaxa").value,cur=$("#rxCur").value===""?null:+$("#rxCur").value;
+  if(!(v>0))return say("Informe o valor aplicado.","err");if(!d)return say("Informe a data da aplicação.","err");if(venc&&venc<d)return say("O vencimento precisa ser depois da aplicação.","err");
+  if((ix==="pos"||ix==="pre")&&!(x>0))return say("Informe a taxa.","err");
+  const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6),nm=$("#rxNome").value.trim();
+  CART.push({id,k:"rf",tp,nm,ix,x:ix==="poup"||ix==="man"?0:x,ir:$("#rxIR").value,v,d,venc,cur:ix==="man"?(cur!=null?cur:v):null,ts:Date.now()});CART._new=id;saveCart();renderCart();
+  say(`${nm||RFT[tp][0]} adicionado à carteira.`,"ok");$("#rxVal").value="";$("#rxNome").value="";$("#rxCur").value=""});
+$("#cartRF").addEventListener("change",e=>{const i=e.target.closest("[data-upd]");if(!i)return;const x=CART.find(y=>y.id===i.dataset.upd);if(!x)return;const v=+i.value;if(!(v>=0))return;x.cur=v;saveCart();renderCart()});
 $("#cartH").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;if(!b.classList.contains("sure")){b.classList.add("sure");b.textContent="Confirmar";setTimeout(()=>{if(b.isConnected){b.classList.remove("sure");b.textContent="Excluir"}},3000);return}
   CART=CART.filter(x=>x.id!==b.dataset.del);saveCart();renderCart()});
 </script>
