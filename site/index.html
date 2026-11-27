@@ -376,6 +376,12 @@ section{animation:none}
 .tape.marquee .seq button:last-child{border-right:1px solid var(--tape-line)}
 .tape.marquee:hover .in,.tape.marquee.hold .in{animation-play-state:paused}
 @keyframes tape{to{transform:translateX(-50%)}}
+/* fechar: sempre um X; com a janela aberta o topo deixa de ser área de arrastar (app do Windows) */
+.dclose{width:36px;height:36px;padding:0;border-radius:50%;display:grid;place-items:center;flex:none}
+.dclose .lbl{display:none}.dclose .x{display:inline}
+html.modal-open header.top,html.modal-open header.top *{-webkit-app-region:no-drag!important;app-region:no-drag!important}
+.modal{-webkit-app-region:no-drag;app-region:no-drag}
+@media (display-mode: window-controls-overlay){.modal{padding-top:calc(env(titlebar-area-y,0px) + env(titlebar-area-height,33px) + 12px)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -911,7 +917,7 @@ function openDetail(t,m){
   $("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};
   const hadHX=HX[t]!==undefined;loadHX(t).then(()=>{if(!DET||DET.t!==t)return;const el=$("#perf [data-k=max]");if(el)el.outerHTML=perfBtn("max","Desde o início",maxChange(t),DET.k==="max");if(!hadHX&&DET.k!==dk)showRange()});
   {const md=$("#modal");if(md.classList.contains("closing"))md.classList.add("reopen")}setTimeout(()=>countUp($("#detail")));requestAnimationFrame(()=>{const cb=$("#chartbox");if(cb&&CHART&&Math.abs(cb.clientWidth-CHART.W)>24)showRange()});
-  $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
+  $("#modal").hidden=false;document.body.style.overflow="hidden";document.documentElement.classList.add("modal-open");$("#modal").scrollTop=0;$("#dClose").focus({preventScroll:true});
 }
 // ---------- Pop-up dos indicadores (Selic, CDI, IPCA...) ----------
 let MH=null;const CUSTOM={};
@@ -935,10 +941,10 @@ function openMacro(key){const M=MACROS[key];if(!M)return;const id="@"+key;
     $("#dClose").onclick=closeDetail;DET={t:id,cur:vf,k:mk};
     if(cs)$("#perf").onclick=e=>{const b=e.target.closest("button[data-k]");if(!b)return;DET.k=b.dataset.k;$("#perf").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));showRange()};};
   {const md=$("#modal");if(md.classList.contains("closing"))md.classList.add("reopen")}setTimeout(()=>countUp($("#detail")));requestAnimationFrame(()=>{const cb=$("#chartbox");if(cb&&CHART&&Math.abs(cb.clientWidth-CHART.W)>24)showRange()});
-  $("#modal").hidden=false;document.body.style.overflow="hidden";$("#modal").scrollTop=0;
+  $("#modal").hidden=false;document.body.style.overflow="hidden";document.documentElement.classList.add("modal-open");$("#modal").scrollTop=0;
   if(MH)show();else{$("#detail").innerHTML=`<div class="panel"><p class="muted">Carregando…</p></div>`;loadMH().then(()=>{if(!$("#modal").hidden)show()})}}
 function closeDetail(){const md=$("#modal");if(!RM()&&!md.hidden&&!md.classList.contains("closing")){md.classList.add("closing");setTimeout(()=>{md.classList.remove("closing");if(md.classList.contains("reopen")){md.classList.remove("reopen");return}closeNow()},160);return}closeNow()}
-function closeNow(){CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
+function closeNow(){document.documentElement.classList.remove("modal-open");CHART=null;DET=null;SEL={a:null,b:null,drag:false,moved:false};$("#modal").hidden=true;document.body.style.overflow="";$("#detail").innerHTML=""}
 $("#modal").addEventListener("click",e=>{if(e.target.isConnected&&!e.target.closest("#modal .panel"))closeDetail()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)closeDetail()});
 document.addEventListener("click",e=>{const sb=e.target.closest("[data-fav]");if(sb){e.preventDefault();toggleFav(sb.dataset.fav);return}if(e.target.closest("#modal .sheet"))return;const el=e.target.closest("[data-t][data-m]");if(el&&!e.target.closest("th"))openDetail(el.dataset.t,el.dataset.m)});
