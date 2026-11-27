@@ -408,6 +408,7 @@ nav.tabs.glide a::after{display:none}
 @media (prefers-reduced-motion:reduce){#chartsvg .halo{display:none}.odo .oc{animation:none}#heat.hin .tile{animation:none}.gl{transition:none}}
 
 /* --- menu da conta (avatar) --- */
+.brand{flex-basis:100%;grid-template-columns:auto 1fr auto}.brand .avatar{grid-column:3;grid-row:1;justify-self:end}
 .avatar{flex:none;width:32px;height:32px;border-radius:50%;padding:0;border:1px solid var(--line2);background:var(--surface);color:var(--ink);display:grid;place-items:center;overflow:hidden;position:relative;cursor:pointer;transition:box-shadow .16s var(--ease),transform .16s var(--ease)}
 .avatar:hover,.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--line2)}
 .avatar:active{transform:scale(.95)}
@@ -694,8 +695,8 @@ function setTema(t){document.documentElement.dataset.theme=t;store.set("tema",t)
 const ACCT={user:null,signIn:null,signOut:null};
 const IC={user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
-  out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg>',
-  in:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4" transform="rotate(180 12 12)"/></svg>'};
+  out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 17l5-5-5-5M21 12H9"/></svg>',
+  in:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>'};
 function paintAcct(){const u=ACCT.user,b=$("#acctBtn");
   b.innerHTML=u?`<span class="ini" aria-hidden="true">${esc((u.displayName||u.email||"?").trim()[0].toUpperCase())}</span>${u.photoURL?`<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:""}`:IC.user;
   b.title=u?(u.displayName||u.email):"Conta e preferências";if(!$("#umenu").hidden)fillMenu()}
@@ -704,7 +705,7 @@ function fillMenu(){const u=ACCT.user,t=temaAtual(),n=FAV.size;
   `<button class="it" role="menuitem" data-a="fav">${IC.star}Favoritos<span class="ct">${n||""}</span></button>`+
   `<div class="ut">${t==="dark"?MOON:SUN}Tema<div class="seg" role="group" aria-label="Tema"><button type="button" data-tema="light" aria-pressed="${t==="light"}">Claro</button><button type="button" data-tema="dark" aria-pressed="${t==="dark"}">Escuro</button></div></div>`+
   (u?`<hr><button class="it" role="menuitem" data-a="out">${IC.out}Sair</button>`:ACCT.signIn?`<hr><button class="it" role="menuitem" data-a="in">${IC.in}Entrar com Google</button>`:"")}
-function placeMenu(){const m=$("#umenu"),r=$("#acctBtn").getBoundingClientRect(),w=m.offsetWidth;const left=Math.max(12,Math.min(r.left,innerWidth-w-12));m.style.left=left+"px";m.style.top=(r.bottom+8)+"px";m.style.transformOrigin=`${r.left+r.width/2-left}px top`}
+function placeMenu(){const m=$("#umenu"),r=$("#acctBtn").getBoundingClientRect(),w=m.offsetWidth;const left=Math.max(12,Math.min(r.right-w,innerWidth-w-12));m.style.left=left+"px";m.style.top=(r.bottom+8)+"px";m.style.transformOrigin=`${r.left+r.width/2-left}px top`}
 function openMenu(){const m=$("#umenu");fillMenu();m.classList.remove("out");m.hidden=false;placeMenu();$("#acctBtn").setAttribute("aria-expanded","true");document.documentElement.classList.add("menu-open");m.querySelector(".it")?.focus({preventScroll:true})}
 function closeMenu(focus){const m=$("#umenu");if(m.hidden)return;$("#acctBtn").setAttribute("aria-expanded","false");document.documentElement.classList.remove("menu-open");
   if(RM()){m.hidden=true}else{m.classList.add("out");setTimeout(()=>{if(m.classList.contains("out")){m.hidden=true;m.classList.remove("out")}},120)}if(focus)$("#acctBtn").focus()}
