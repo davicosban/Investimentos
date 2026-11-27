@@ -39,19 +39,19 @@
   --glass:#FFFFFF; --glow:none; --tape:#ECEAE4; --tape-ink:#16150F; --tape-muted:#67655D; --tape-line:rgba(28,26,20,.12); --tape-up:#0B8A55; --tape-down:#D23B2F;
   --shadow:0 1px 2px rgba(28,26,20,.05),0 4px 12px -6px rgba(28,26,20,.10);
   --f-display:"Geist",system-ui,sans-serif; --f-body:"Geist",system-ui,sans-serif; --f-num:"Geist",system-ui,sans-serif; --f-mono:"Geist Mono",ui-monospace,monospace;
-  --r:14px; --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
+  --s1:#257de0;--s2:#f47230;--s3:#00b894;--s4:#f2a600;--s5:#ee7fac;--s6:#008a17;--s7:#6a4ce2;--s8:#ec4647;--s0:#B9B6AC; --r:14px; --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E0F11; --bg2:#141518; --surface:#16181B; --surface2:#1D1F23; --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
   --ink:#ECEDEF; --muted:#8E9198; --accent:#6C9CFF; --accent2:#93B6FF; --accent-ink:#0B0C0E;
   --up:#34C98B; --down:#FF6A5E; --upbg:rgba(52,201,139,.12); --downbg:rgba(255,106,94,.12); --warn:#F0BE55; --warnbg:rgba(240,190,85,.12);
-  --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
+  --s1:#338ced;--s2:#e76624;--s3:#00a888;--s4:#d28e05;--s5:#e24d8b;--s6:#0aac23;--s7:#9887ef;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E0F11; --bg2:#141518; --surface:#16181B; --surface2:#1D1F23; --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
   --ink:#ECEDEF; --muted:#8E9198; --accent:#6C9CFF; --accent2:#93B6FF; --accent-ink:#0B0C0E;
   --up:#34C98B; --down:#FF6A5E; --upbg:rgba(52,201,139,.12); --downbg:rgba(255,106,94,.12); --warn:#F0BE55; --warnbg:rgba(240,190,85,.12);
-  --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
+  --s1:#338ced;--s2:#e76624;--s3:#00a888;--s4:#d28e05;--s5:#e24d8b;--s6:#0aac23;--s7:#9887ef;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}
 *{box-sizing:border-box}
 html{background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
@@ -408,6 +408,25 @@ nav.tabs.glide a::after{display:none}
 @media (prefers-reduced-motion:reduce){#chartsvg .halo{display:none}.odo .oc{animation:none}#heat.hin .tile{animation:none}.gl{transition:none}}
 
 .panel.idx{padding-bottom:0}.panel.idx .spark{margin-bottom:0}
+/* --- carteira: roscas --- */
+.donuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px 32px;margin-top:6px}
+.dn h4{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--muted)}
+.dn{min-width:0}.dnw{display:flex;align-items:center;gap:22px;min-width:0}
+.dring{position:relative;width:184px;height:184px;flex:none}
+.dring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.dring circle{fill:none;stroke-width:15;cursor:pointer;transition:opacity .25s var(--ease),stroke-width .3s var(--ease)}
+.dring svg.hl circle{opacity:.22}.dring svg.hl circle.on{opacity:1;stroke-width:21}
+.dn.pre circle,.dn.pre .dleg span,.dn.pre .dc{opacity:0}
+.dring .dtrack{stroke:var(--surface2);stroke-width:15;cursor:default;pointer-events:none}
+.dn .dleg .dot{transition:transform .25s var(--ease)}.dn .dleg span.on .dot{transform:scale(1.35)}
+.dc{position:absolute;inset:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.dc small{font-size:12px;color:var(--muted);font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc b{font-size:17px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.dc span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dn .dleg{flex-direction:column;flex-wrap:nowrap;gap:7px;margin:0;min-width:0}
+.dn .dleg{flex:1}.dn .dleg span{display:flex;align-items:center;gap:6px;min-width:0;cursor:pointer;border-radius:6px;padding:2px 6px;margin:-2px -6px;transition:background-color .15s;white-space:nowrap}.dn .dleg em{font-style:normal;overflow:hidden;text-overflow:ellipsis;min-width:0}.dn .dleg b{flex:none}
+.dn .dleg span.on{background:var(--surface2)}
+@media (max-width:640px){.donuts{grid-template-columns:1fr}.dring{width:150px;height:150px}.dc{inset:28px}.dc b{font-size:15px}.dnw{gap:16px}}
 /* --- carteira --- */
 .cartsum .chip b{font-variant-numeric:tabular-nums}
 #cartRF .upd{width:110px;padding:5px 8px;font-size:13px;text-align:right}#cartAddP>.seg button{padding:7px 14px}
@@ -501,7 +520,7 @@ html.menu-open header.top,html.menu-open header.top *{-webkit-app-region:no-drag
 <section id="v-carteira" hidden>
   <div class="hero"><h2 class="display">Carteira <span class="hdate" id="cartAsof"></span></h2><p class="lede" id="cartLede">Ações, FIIs, renda fixa, Tesouro e fundos num lugar só, com posição, preço médio e resultado de cada investimento.</p></div>
   <div class="chips cartsum" id="cartSum"></div>
-  <div class="panel cartdist" id="cartDist" hidden><h3>Distribuição por classe</h3><div class="dbarr" id="cartBarC"></div><div class="dleg" id="cartLegC"></div><h3 style="margin-top:18px">Por ativo</h3><div class="dbarr" id="cartBar"></div><div class="dleg" id="cartLeg"></div></div>
+  <div class="panel cartdist" id="cartDist" hidden><h3>Distribuição</h3><div class="donuts"><div class="dn" id="dnC"><h4>Por classe</h4><div class="dnw"><div class="dring"><svg viewBox="0 0 120 120" aria-hidden="true"></svg><div class="dc"></div></div><div class="dleg"></div></div></div><div class="dn" id="dnA"><h4>Por ativo</h4><div class="dnw"><div class="dring"><svg viewBox="0 0 120 120" aria-hidden="true"></svg><div class="dc"></div></div><div class="dleg"></div></div></div></div></div>
   <div class="panel"><h3>Ações e FIIs</h3><div class="tbox"><table id="cartT"></table></div><p class="muted small" id="cartEmpty" style="margin:12px 0 0"></p></div>
   <div class="panel" id="cartRFP" hidden><h3>Renda fixa, Tesouro e fundos</h3><div class="tbox"><table id="cartRF"></table></div><p class="muted small" style="margin:12px 0 0">O valor é atualizado sozinho pela taxa contratada, usando a Selic, o CDI e o IPCA mais recentes do Banco Central. "Líquido" já desconta IR e IOF se você resgatasse hoje. Fundos e outros: você informa o valor atual.</p></div>
   <div class="panel" id="cartAddP"><h3>Registrar operação</h3>
@@ -1250,7 +1269,7 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
   initCloud().catch(e=>console.warn("conta:",e));
@@ -1341,7 +1360,7 @@ addEventListener("hashchange",()=>{if(location.hash==="#calc")requestAnimationFr
 glide($("#ctabs"),"[aria-pressed=true]","ink");
 // ---------- Carteira ----------
 let CART=store.get("carteira",[]);
-const CCOL=["#1F5FD6","#0B8A55","#D98A1F","#8A4FD6","#D23B6E","#1FA3B0","#7A8A2F","#A0674A"];
+const CCOL=[1,2,3,4,5,6,7,8].map(i=>`var(--s${i})`);
 const usdbrl=()=>(H["USDBRL=X"]&&H["USDBRL=X"].p)||(H["BRL=X"]&&H["BRL=X"].p)||MACRO.ptax||5;
 function findAsset(t){t=String(t||"").trim().toUpperCase();if(!t)return null;let r=BR.find(x=>x.t===t);if(r)return {r,m:"br"};r=US.find(x=>x.t===t);return r?{r,m:"us"}:null}
 function positions(){const P={};CART.filter(x=>x.k!=="rf").sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.ts-b.ts).forEach(x=>{const k=x.m+"|"+x.t,o=P[k]||(P[k]={t:x.t,m:x.m,q:0,cost:0,real:0});
@@ -1367,17 +1386,17 @@ function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps
   $("#cartRFP").hidden=!rfr.length;
   $("#cartRF").innerHTML=rfr.length?`<thead><tr><th class="l">Investimento</th><th class="l">Tipo</th><th class="l">Rentabilidade</th><th class="l">Aplicado em</th><th class="l">Vencimento</th><th class="n">Aplicado</th><th class="n">Valor bruto</th><th class="n">Líquido</th><th class="n">Resultado</th></tr></thead><tbody>${rfr.map(y=>{const x=y.x,dt=d=>d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"–";return `<tr style="cursor:default"><td class="l t">${esc(y.name)}</td><td class="l small">${esc(RFT[x.tp][0])}</td><td class="l">${esc(rfDesc(x))}</td><td class="l">${dt(x.d)}</td><td class="l">${dt(x.venc)}${y.venceu?' <span class="pill">venceu</span>':""}</td><td class="n">${brl(x.v)}</td><td class="n">${x.ix==="man"?`<input class="upd" type="number" step="0.01" data-upd="${esc(x.id)}" value="${(x.cur!=null?x.cur:x.v).toFixed(2)}" aria-label="Valor atual de ${esc(y.name)}">`:brl(y.gross)}</td><td class="n">${brl(y.liq)}</td><td class="n ${cls(y.res)}">${brs(y.res)} <span class="small">(${pct(x.v?y.res/x.v*100:0)})</span></td></tr>`}).join("")}</tbody>`:"";
   const dist=$("#cartDist");dist.hidden=!all.length;
-  const paintBar=(bar,leg,segs)=>{if(bar.children.length!==segs.length)bar.innerHTML=segs.map(()=>"<i></i>").join("");segs.forEach(([t,v,c],i)=>{const el=bar.children[i];el.style.background=c;el.style.flexGrow=v/tot;el.title=t});leg.innerHTML=segs.map(([t,v,c])=>`<span><i class="dot" style="background:${c}"></i>${esc(t)} <b>${fmt(v/tot*100,1)}%</b></span>`).join("")};
-  if(all.length){const top=all.slice(0,7),rest=all.slice(7).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--muted)"]);paintBar($("#cartBar"),$("#cartLeg"),sg);
-    const CLS=[["Ações Brasil","#1F5FD6"],["FIIs","#1FA3B0"],["ETFs","#D23B6E"],["Ações EUA","#8A4FD6"],["Renda fixa","#0B8A55"],["Tesouro Direto","#D98A1F"],["Fundos e outros","#A0674A"]];
-    paintBar($("#cartBarC"),$("#cartLegC"),CLS.map(([c,col])=>[c,all.filter(x=>x.cl===c).reduce((s,x)=>s+x.val,0),col]).filter(x=>x[1]>0))}
+  const paintBar=(box,_,segs)=>donut(box,segs,tot);
+  if(all.length){const top=all.slice(0,7),rest=all.slice(7).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--s0)"]);paintBar($("#dnA"),0,sg);
+    const CLS=[["Ações Brasil",CCOL[0]],["FIIs",CCOL[1]],["ETFs",CCOL[2]],["Tesouro Direto",CCOL[3]],["Fundos e outros",CCOL[4]],["Renda fixa",CCOL[5]],["Ações EUA",CCOL[6]]];
+    paintBar($("#dnC"),0,CLS.map(([c,col])=>[c,all.filter(x=>x.cl===c).reduce((s,x)=>s+x.val,0),col]).filter(x=>x[1]>0))}
   const H2=[...CART].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts);
   $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const dt=`<td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td>`,del=`<td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td>`;
     if(x.k==="rf")return `<tr style="cursor:default" data-id="${esc(x.id)}">${dt}<td class="l"><span class="pill up">Aplicação</span></td><td class="l t">${esc(x.nm||RFT[x.tp][0])}</td><td class="n">–</td><td class="n">–</td><td class="n">${brl(x.v)}</td>${del}</tr>`;
     const f=x.m==="us"?usd:(v=>"R$ "+fmt(v));return `<tr style="cursor:default" data-id="${esc(x.id)}">${dt}<td class="l"><span class="pill ${x.s==="c"?"up":"down"}">${x.s==="c"?"Compra":"Venda"}</span></td><td class="l t">${esc(x.t)}</td><td class="n">${fmt(x.q,x.q%1?4:0)}</td><td class="n">${f(x.p)}</td><td class="n">${f(x.q*x.p)}</td>${del}</tr>`}).join("")}</tbody>`:"";
   $("#cartHEmpty").textContent=H2.length?"":"Nenhuma operação registrada ainda.";
   $("#cartAsof").textContent=tot?"em reais":"";
-  if(enter&&!RM()){countUp($("#cartSum"),".chip b");document.querySelectorAll("#cartBar i,#cartBarC i").forEach((b,i)=>{const g=getComputedStyle(b).flexGrow;b.animate([{flexGrow:0},{flexGrow:g}],{duration:800,delay:120+(i%8)*60,easing:"cubic-bezier(.23,1,.32,1)",fill:"backwards"})})}
+  if(enter&&!RM()){countUp($("#cartSum"),".chip b");donutsEnter()}
   if(CART._new){const id=CART._new;CART._new=null;const tr=$(`#cartH tr[data-id="${CSS.escape(id)}"]`);if(tr)tr.classList.add("new")}}
 segs("#cxSide",()=>{});glide($("#cxSide"),"[aria-pressed=true]","pill");
 $("#cxD").value=new Date(Date.now()-3*36e5).toISOString().slice(0,10);
@@ -1404,6 +1423,32 @@ $("#rxAdd").addEventListener("click",()=>{const msg=$("#cxMsg"),say=(t,k)=>{msg.
 $("#cartRF").addEventListener("change",e=>{const i=e.target.closest("[data-upd]");if(!i)return;const x=CART.find(y=>y.id===i.dataset.upd);if(!x)return;const v=+i.value;if(!(v>=0))return;x.cur=v;saveCart();renderCart()});
 $("#cartH").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;if(!b.classList.contains("sure")){b.classList.add("sure");b.textContent="Confirmar";setTimeout(()=>{if(b.isConnected){b.classList.remove("sure");b.textContent="Excluir"}},3000);return}
   CART=CART.filter(x=>x.id!==b.dataset.del);saveCart();renderCart()});
+// Gráfico de rosca: fatias com o peso de cada parte, total no centro, destaque ao passar o mouse ou tocar
+const DR=48,DCIRC=2*Math.PI*DR;
+function donut(box,segs,tot){const svg=box.querySelector("svg"),leg=box.querySelector(".dleg");box._segs=segs;box._tot=tot;const gap=segs.length>1?1.4:0;let acc=0;
+  svg.innerHTML=`<circle class="dtrack" cx="60" cy="60" r="${DR}"></circle>`+segs.map(([t,v,c],i)=>{const len=v/tot*DCIRC,off=acc;acc+=len;return `<circle cx="60" cy="60" r="${DR}" style="stroke:${c}" stroke-dasharray="${Math.max(0,len-gap).toFixed(2)} ${DCIRC.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" data-i="${i}" data-len="${Math.max(0,len-gap).toFixed(2)}"></circle>`}).join("");
+  leg.innerHTML=segs.map(([t,v,c],i)=>`<span data-i="${i}"><i class="dot" style="background:${c}"></i><em>${esc(t)}</em><b>${fmt(v/tot*100,1)}%</b></span>`).join("");
+  donutCenter(box,-1);
+  if(!box._wired){box._wired=1;const pick=e=>{const el=e.target.closest("[data-i]");return el?+el.dataset.i:null};
+    box.addEventListener("pointerover",e=>{const i=pick(e);if(i!=null)donutCenter(box,i)});
+    box.addEventListener("pointerleave",()=>{if(box._pin==null)donutCenter(box,-1);else donutCenter(box,box._pin)});
+    box.addEventListener("click",e=>{const i=pick(e);if(i==null)return;box._pin=box._pin===i?null:i;donutCenter(box,box._pin==null?-1:i)})}}
+function donutCenter(box,i){const svg=box.querySelector("svg"),dc=box.querySelector(".dc"),segs=box._segs||[],tot=box._tot||0;
+  svg.classList.toggle("hl",i>=0);svg.querySelectorAll("circle[data-i]").forEach(c=>c.classList.toggle("on",+c.dataset.i===i));box.querySelectorAll(".dleg span").forEach(s=>s.classList.toggle("on",+s.dataset.i===i));
+  if(box._ci!==i&&box._ci!==undefined&&!RM())dc.animate([{opacity:0,transform:"translateY(4px)",filter:"blur(2px)"},{opacity:1,transform:"none",filter:"none"}],{duration:260,easing:"cubic-bezier(.23,1,.32,1)"});box._ci=i;
+  if(i>=0&&segs[i]){const [t,v]=segs[i];dc.innerHTML=`<small>${esc(t)}</small><b>${brl(v)}</b><span>${fmt(v/tot*100,1)}%</span>`}
+  else dc.innerHTML=`<small>Total</small><b>${brl(tot)}</b><span>${segs.length} ${box.id==="dnC"?(segs.length===1?"classe":"classes"):(segs.length===1?"ativo":"itens")}</span>`}
+function donutIn(box){box.classList.remove("pre");if(RM())return;const svg=box.querySelector("svg"),cs=[...svg.querySelectorAll("circle[data-i]")],E="cubic-bezier(.23,1,.32,1)";const tot=cs.reduce((s,c)=>s+ +c.dataset.len,0)||1;let acc=0;
+  svg.querySelector(".dtrack").animate([{opacity:0},{opacity:1}],{duration:300,easing:E,fill:"backwards"});
+  cs.forEach((c,i)=>{const len=+c.dataset.len;
+    c.animate([{strokeDasharray:`0 ${DCIRC}`,strokeWidth:6,opacity:0},{opacity:1,offset:.15},{strokeDasharray:`${len} ${DCIRC}`,strokeWidth:15,opacity:1}],{duration:720+Math.min(380,len/tot*600),delay:140+i*70,easing:E,fill:"backwards"})});
+  svg.animate([{transform:"rotate(-200deg) scale(.86)"},{transform:"rotate(-90deg) scale(1)"}],{duration:1200,easing:E});
+  box.querySelectorAll(".dleg span").forEach((s,i)=>s.animate([{opacity:0,transform:"translateX(-6px)"},{opacity:1,transform:"none"}],{duration:380,delay:260+i*55,easing:E,fill:"backwards"}));
+  const dc=box.querySelector(".dc");dc.animate([{opacity:0,transform:"scale(.9)",filter:"blur(3px)"},{opacity:1,transform:"none",filter:"none"}],{duration:500,delay:380,easing:E,fill:"backwards"});
+  const b=dc.querySelector("b");if(b&&box._tot){const T=box._tot,t0=performance.now()+380;const tick=now=>{const k=Math.min(1,Math.max(0,(now-t0)/900)),e=1-Math.pow(1-k,4);if(box._ci===-1&&b.isConnected)b.textContent=brl(T*e);if(k<1)requestAnimationFrame(tick);else if(box._ci===-1&&b.isConnected)b.textContent=brl(T)};requestAnimationFrame(tick)}}
+// anima as roscas quando aparecem na tela (no celular ficam abaixo da dobra)
+function donutsEnter(){const els=[...document.querySelectorAll(".donuts .dn")];if(!("IntersectionObserver" in window)){els.forEach(donutIn);return}
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){io.unobserve(e.target);donutIn(e.target)}}),{threshold:.35});els.forEach(el=>{el.classList.add("pre");io.observe(el)})}
 </script>
 </body>
 </html>
