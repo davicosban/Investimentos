@@ -320,7 +320,8 @@ td.n,.kv div:nth-child(even){font-family:var(--f-body)}
 tbody tr{transition:background-color .12s var(--ease)}
 .fxcode{font-family:var(--f-body);border-radius:5px}
 .tag{border-radius:5px;letter-spacing:.02em}
-.tile{border-radius:10px;font-family:var(--f-body)}
+.tile{border-radius:10px;font-family:var(--f-body);box-shadow:none;transition:transform .16s var(--ease),filter .16s var(--ease)}
+.tile:hover{filter:brightness(1.08)}
 .tile:hover{transform:translateY(-2px)}
 .sector h4{text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:var(--ink)}
 /* estrela */
@@ -448,14 +449,14 @@ section{animation:none}
 </section>
 
 <section id="v-cambio" hidden>
-  <div class="hero"><p class="eyebrow">Câmbio</p><h2 class="display">Moedas <em>em reais</em></h2><p class="lede" id="fxLede">Quanto custa cada moeda em R$, e quanto ela subiu ou caiu.</p></div>
+  <div class="hero"><h2 class="display">Câmbio <span class="hdate">moedas em reais</span></h2><p class="lede" id="fxLede">Quanto custa cada moeda em R$, e quanto ela subiu ou caiu.</p></div>
   <div class="grid g4" id="fxCards"></div>
   <div class="fxgrid" style="margin-top:14px">
     <div class="panel"><h3 style="margin-top:0">Todas as moedas</h3><div class="tbox"><table id="fxt"></table></div>
       <p class="muted small" style="margin-bottom:0">Cotação de fechamento de cada moeda em reais (fonte: Yahoo Finance). Clique numa moeda para ver o gráfico e escolher o período.</p></div>
     <div class="panel"><h3 style="margin-top:0">Conversor</h3>
       <div class="conv"><label>Valor<input type="number" id="cvAmt" value="1000" min="0" step="any" inputmode="decimal"></label>
-      <label>De<select id="cvFrom"></select></label><button type="button" id="cvSwap" class="mini" title="Inverter" aria-label="Inverter moedas">⇄</button><label>Para<select id="cvTo"></select></label></div>
+      <label>De<select id="cvFrom"></select></label><button type="button" id="cvSwap" class="mini" title="Inverter" aria-label="Inverter moedas"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg></button><label>Para<select id="cvTo"></select></label></div>
       <div class="cvres" id="cvRes"></div>
       <p class="muted small" style="margin-bottom:0">Usa a cotação de mercado. Bancos e casas de câmbio cobram spread e IOF (hoje 3,5% no cartão e na compra de moeda em espécie), então o valor real fica um pouco pior.</p></div>
   </div>
