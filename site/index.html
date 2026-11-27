@@ -39,19 +39,19 @@
   --glass:#FFFFFF; --glow:none; --tape:#ECEAE4; --tape-ink:#16150F; --tape-muted:#67655D; --tape-line:rgba(28,26,20,.12); --tape-up:#0B8A55; --tape-down:#D23B2F;
   --shadow:0 1px 2px rgba(28,26,20,.05),0 4px 12px -6px rgba(28,26,20,.10);
   --f-display:"Geist",system-ui,sans-serif; --f-body:"Geist",system-ui,sans-serif; --f-num:"Geist",system-ui,sans-serif; --f-mono:"Geist Mono",ui-monospace,monospace;
-  --s1:#257de0;--s2:#f47230;--s3:#00b894;--s4:#f2a600;--s5:#ee7fac;--s6:#008a17;--s7:#6a4ce2;--s8:#ec4647;--s0:#B9B6AC; --r:14px; --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
+  --s1:#396ed6;--s2:#c65b93;--s3:#e3a42e;--s4:#00aa95;--s5:#de6640;--s6:#7250ba;--s7:#298a41;--s8:#ec4647;--s0:#B9B6AC; --r:14px; --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E0F11; --bg2:#141518; --surface:#16181B; --surface2:#1D1F23; --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
   --ink:#ECEDEF; --muted:#8E9198; --accent:#6C9CFF; --accent2:#93B6FF; --accent-ink:#0B0C0E;
   --up:#34C98B; --down:#FF6A5E; --upbg:rgba(52,201,139,.12); --downbg:rgba(255,106,94,.12); --warn:#F0BE55; --warnbg:rgba(240,190,85,.12);
-  --s1:#338ced;--s2:#e76624;--s3:#00a888;--s4:#d28e05;--s5:#e24d8b;--s6:#0aac23;--s7:#9887ef;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
+  --s1:#4a81eb;--s2:#d4679f;--s3:#cf9105;--s4:#16b09b;--s5:#e26943;--s6:#8f6edb;--s7:#46a359;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E0F11; --bg2:#141518; --surface:#16181B; --surface2:#1D1F23; --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
   --ink:#ECEDEF; --muted:#8E9198; --accent:#6C9CFF; --accent2:#93B6FF; --accent-ink:#0B0C0E;
   --up:#34C98B; --down:#FF6A5E; --upbg:rgba(52,201,139,.12); --downbg:rgba(255,106,94,.12); --warn:#F0BE55; --warnbg:rgba(240,190,85,.12);
-  --s1:#338ced;--s2:#e76624;--s3:#00a888;--s4:#d28e05;--s5:#e24d8b;--s6:#0aac23;--s7:#9887ef;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
+  --s1:#4a81eb;--s2:#d4679f;--s3:#cf9105;--s4:#16b09b;--s5:#e26943;--s6:#8f6edb;--s7:#46a359;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}
 *{box-sizing:border-box}
 html{background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
@@ -415,7 +415,7 @@ nav.tabs.glide a::after{display:none}
 .dring{position:relative;width:184px;height:184px;flex:none}
 .dring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
 .dring circle{fill:none;stroke-width:15;cursor:pointer;transition:opacity .25s var(--ease),stroke-width .3s var(--ease)}
-.dring svg.hl circle{opacity:.22}.dring svg.hl circle.on{opacity:1;stroke-width:21}
+.dring svg.hl circle{opacity:.3}.dring svg.hl circle.on{opacity:1;stroke-width:21}
 .dn.pre circle,.dn.pre .dleg span,.dn.pre .dc{opacity:0}
 .dring .dtrack{stroke:var(--surface2);stroke-width:15;cursor:default;pointer-events:none}
 .dn .dleg .dot{transition:transform .25s var(--ease)}.dn .dleg span.on .dot{transform:scale(1.35)}
@@ -1388,7 +1388,7 @@ function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps
   const dist=$("#cartDist");dist.hidden=!all.length;
   const paintBar=(box,_,segs)=>donut(box,segs,tot);
   if(all.length){const top=all.slice(0,7),rest=all.slice(7).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--s0)"]);paintBar($("#dnA"),0,sg);
-    const CLS=[["Ações Brasil",CCOL[0]],["FIIs",CCOL[1]],["ETFs",CCOL[2]],["Tesouro Direto",CCOL[3]],["Fundos e outros",CCOL[4]],["Renda fixa",CCOL[5]],["Ações EUA",CCOL[6]]];
+    const CLS=[["Ações Brasil",CCOL[0]],["FIIs",CCOL[1]],["ETFs",CCOL[2]],["Tesouro Direto",CCOL[3]],["Fundos e outros",CCOL[4]],["Ações EUA",CCOL[5]],["Renda fixa",CCOL[6]]];
     paintBar($("#dnC"),0,CLS.map(([c,col])=>[c,all.filter(x=>x.cl===c).reduce((s,x)=>s+x.val,0),col]).filter(x=>x[1]>0))}
   const H2=[...CART].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts);
   $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const dt=`<td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td>`,del=`<td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td>`;
@@ -1425,7 +1425,7 @@ $("#cartH").addEventListener("click",e=>{const b=e.target.closest("[data-del]");
   CART=CART.filter(x=>x.id!==b.dataset.del);saveCart();renderCart()});
 // Gráfico de rosca: fatias com o peso de cada parte, total no centro, destaque ao passar o mouse ou tocar
 const DR=48,DCIRC=2*Math.PI*DR;
-function donut(box,segs,tot){const svg=box.querySelector("svg"),leg=box.querySelector(".dleg");box._segs=segs;box._tot=tot;const gap=segs.length>1?1.4:0;let acc=0;
+function donut(box,segs,tot){const svg=box.querySelector("svg"),leg=box.querySelector(".dleg");box._segs=segs;box._tot=tot;const gap=segs.length>1?1.8:0;let acc=0;
   svg.innerHTML=`<circle class="dtrack" cx="60" cy="60" r="${DR}"></circle>`+segs.map(([t,v,c],i)=>{const len=v/tot*DCIRC,off=acc;acc+=len;return `<circle cx="60" cy="60" r="${DR}" style="stroke:${c}" stroke-dasharray="${Math.max(0,len-gap).toFixed(2)} ${DCIRC.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" data-i="${i}" data-len="${Math.max(0,len-gap).toFixed(2)}"></circle>`}).join("");
   leg.innerHTML=segs.map(([t,v,c],i)=>`<span data-i="${i}"><i class="dot" style="background:${c}"></i><em>${esc(t)}</em><b>${fmt(v/tot*100,1)}%</b></span>`).join("");
   donutCenter(box,-1);
