@@ -981,7 +981,9 @@ function intraLocal(sym){const I=INTRA;if(!I||!I.p||!I.p[sym])return null;const 
   const us=sym==="^GSPC"||sym==="^IXIC"||(!!r&&!BR.includes(r));const open=us?11*60+30:10*60;
   // só pontos do horário do pregão (rodadas da madrugada repetiam o preço de ontem)
   const pts=I.m.map((m,i)=>[m,I.p[sym][i]]).filter(([m,v])=>v!=null&&m>=open-5&&m<=18*60+20).map(([m,v])=>[ms(m),v]);if(!pts.length)return null;
-  if(r&&r.c!=null&&r.p)pts.pc=r.p/(1+r.c/100);else if(!r&&H[sym]){const d=dchg(sym);if(d!=null)pts.pc=H[sym].p/(1+d/100)}   // fechamento de ontem: linha pontilhada, como no Google
+  if(r&&r.c!=null&&r.p)pts.pc=r.p/(1+r.c/100);else if(!r&&H[sym]){const d=dchg(sym);if(d!=null)pts.pc=H[sym].p/(1+d/100)}
+  // na abertura a fonte grátis ainda repete o fechamento de ontem por alguns minutos: tira esses pontos parados
+  if(pts.pc){const o=Date.UTC(y,mo-1,d)+(open+180+45)*6e4;while(pts.length>2&&pts[0][0]<o&&Math.abs(pts[0][1]-pts.pc)<0.006*Math.max(1,pts.pc/100)&&pts.some(p=>Math.abs(p[1]-pts.pc)>0.006*Math.max(1,pts.pc/100)))pts.shift()}   // fechamento de ontem: linha pontilhada, como no Google
   if(pts.length===1)pts.unshift([ms(open),pts[0][1]]);
   return pts}
 function maxChange(sym){const w=pointsFor(sym,"max");return w?(w[w.length-1][1]/w[0][1]-1)*100:null}
@@ -1001,8 +1003,8 @@ function chartSVG(sym,cur,k="y1"){let s=pointsFor(sym,k),zoomed=false;
   const X=tx?(i=>pl+((s[i][0]-tx[0])/(tx[1]-tx[0]||1))*(W-pl-pr)):(i=>pl+(i/(s.length-1))*(W-pl-pr)),Y=v=>pt+(1-(v-mn)/(mx-mn||1))*(Hh-pt-pb);
   const d=s.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p[1]).toFixed(1)).join("");const span=s[s.length-1][0]-s[0][0];
   let g="";for(let q=0;q<=4;q++){const v=mn+(mx-mn)*q/4;const y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${W-pr+6}" y="${y+3}">${fmt(v,v>=1000?0:2)}</text>`}
-  if(s.pc){const y=Y(s.pc);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-dasharray="2 4" opacity=".8"/><text x="${pl+4}" y="${y-5}" style="fill:var(--muted)">Fech. ant. ${fmt(s.pc)}</text>`}
-  if(tx){const d=new Date(tx[0]);for(let h=10;h<=18;h+=2){const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h+3,0);if(t<tx[0]||t>tx[1])continue;const x=pl+((t-tx[0])/(tx[1]-tx[0]))*(W-pl-pr);g+=`<text x="${x}" y="${Hh-6}" text-anchor="${x<pl+20?"start":x>W-pr-20?"end":"middle"}">${h}:00</text>`}}
+  if(s.pc){const y=Y(s.pc);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-dasharray="2 4" opacity=".8"/><text x="${W-pr-4}" y="${y-6}" text-anchor="end" style="fill:var(--muted)">Fech. ant. ${fmt(s.pc)}</text>`}
+  if(tx){const d=new Date(tx[0]);for(let h=10;h<=18;h+=3){const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),h+3,0);if(t<tx[0]||t>tx[1])continue;const x=pl+((t-tx[0])/(tx[1]-tx[0]))*(W-pl-pr);g+=`<text x="${x}" y="${Hh-6}" text-anchor="${x<pl+20?"start":x>W-pr-20?"end":"middle"}">${h}:00</text>`}}
   else {// rótulos no começo de cada hora/dia/mês/ano, até 7, cobrindo o período inteiro
     const bk=ms=>{const d=new Date(ms);return span<=1.6*864e5?d.getHours():span<=75*864e5?d.toDateString():span<=420*864e5?d.getUTCFullYear()*12+d.getUTCMonth():d.getUTCFullYear()};
     let idx=[];for(let i=1;i<s.length;i++)if(bk(s[i][0])!==bk(s[i-1][0]))idx.push(i);
@@ -1013,7 +1015,7 @@ function chartSVG(sym,cur,k="y1"){let s=pointsFor(sym,k),zoomed=false;
   const li=s.length-1;
   CHART={s,X,Y,W,Hh,pl,pr,pt,pb,span,tx,cur:cur||(v=>fmt(v)),cur0:cur,sym,k,zoomed,mode:CUSTOM[sym]?CUSTOM[sym].mode:"pct"};
   return `<div class="selinfo" id="selinfo">${selIdle()}</div>
-  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<g class="base"><path class="ar" d="${d} L${X(li)} ${Hh-pb} L${X(0)} ${Hh-pb}Z" fill="${col}" opacity=".1"/><path class="ln" d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/><circle class="halo" cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/><circle class="dot" cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
+  <svg class="chart" id="chartsvg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Preço de ${esc(sym)}">${g}<defs><linearGradient id="agrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".26"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><g class="base"><path class="ar" d="${d} L${X(li)} ${Hh-pb} L${X(0)} ${Hh-pb}Z" fill="url(#agrad)"/><path class="ln" d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/><circle class="halo" cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/><circle class="dot" cx="${X(li)}" cy="${Y(s[li][1])}" r="4" fill="${col}"/></g><g id="selg"></g><g id="hovg"></g></svg>`}
 // Sem trecho marcado: dica, ou (com zoom) o período ampliado e o botão para voltar
 function selIdle(){const c=CHART;if(!c||!c.zoomed)return `<span class="muted hint">${SELHINT}</span>`;const s=c.s,a=s[0][1],b=s[s.length-1][1],ch=c.mode==="pp"?b-a:(b/a-1)*100;
   return `<span class="zchip">${IC.zoom||""}Ampliado</span><span><b>${dfmt(s[0][0])}</b> → <b>${dfmt(s[s.length-1][0])}</b></span><span class="pill ${cls(ch)}" style="font-weight:700">${ch>=0?"▲":"▼"} ${c.mode==="pp"?ppf(ch):pct(ch,2)}</span><button type="button" class="mini" data-zout>Ver período todo</button>`}
@@ -1309,7 +1311,7 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}
