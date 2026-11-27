@@ -194,6 +194,44 @@ def us_cnbc(us, log):
         time.sleep(0.3)
     log.append(f"CNBC ações EUA: {ok} cotações" + (f" (erro: {err})" if err else ""))
 
+def poe_preco(h, px, t, off=-10800):
+    """Põe o preço do momento na série diária: dia mais antigo é ignorado, mesmo dia troca a última barra, dia novo cria outra."""
+    day = (t + off) // 86400; dh = (h["t"] + off) // 86400 if h.get("t") else h["d0"] + sum(h["dd"])
+    if day < dh or (day == dh and abs(px - (h.get("p") or 0)) < 1e-12): return False
+    if day == dh: h["c"][-1] = float("%.6g" % px)
+    else: h["dd"].append(day - dh); h["c"].append(float("%.6g" % px))
+    h["p"] = px; h["t"] = max(t, h.get("t") or 0)
+    h["hi"] = max(h.get("hi") or px, px); h["lo"] = min(h.get("lo") or px, px)
+    return True
+
+# Moedas em reais a partir das cotações contra o dólar da CNBC (1 pedido para todas)
+FXUSD = {"EUR": ("EUR=", 1), "GBP": ("GBP=", 1), "AUD": ("AUD=", 1), "JPY": ("JPY=", -1), "CHF": ("CHF=", -1), "CNY": ("CNY=", -1),
+         "CAD": ("CAD=", -1), "MXN": ("MXN=", -1), "ARS": ("ARS=", -1), "CLP": ("CLP=", -1), "UYU": ("UYU=", -1)}
+
+def fx_cnbc(hist, log):
+    syms = ["BRL="] + [v[0] for v in FXUSD.values()]
+    j = jget("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=" + urllib.parse.quote("|".join(syms))
+             + "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json")
+    qs = j["FormattedQuoteResult"]["FormattedQuote"]
+    if isinstance(qs, dict): qs = [qs]
+    q = {}
+    for x in qs:
+        try: q[x.get("symbol")] = float(str(x.get("last", "")).replace(",", ""))
+        except Exception: pass
+    brl = q.get("BRL=")
+    if not brl or brl <= 0: raise ValueError("sem BRL=")
+    t = int(time.time()); feitos = []
+    precos = {"USD": brl}
+    for code, (sym, kind) in FXUSD.items():
+        x = q.get(sym)
+        if x and x > 0: precos[code] = brl * x if kind == 1 else brl / x
+    for code, px in precos.items():
+        h = hist.get(code + "BRL=X")
+        if not h or not h.get("c"): continue
+        if abs(px / h["c"][-1] - 1) > 0.2: continue   # conta estranha: não mexe
+        if poe_preco(h, px, t): feitos.append(code)
+    log.append("Câmbio pela CNBC: " + (", ".join(feitos) if feitos else "nada novo"))
+
 def idx_reserva(hist, log):
     feitos = []
     erros = []
@@ -289,7 +327,7 @@ def intraday_local(br, us, hist=None):
         d["m"] = d["m"][k:]; d["p"] = {t: v[k:] for t, v in d["p"].items()}
     if d["m"] and minuto - d["m"][-1] < 3: return   # rodada repetida em menos de 3 min
     ativos = [r for r in br[:300]] + sorted(us, key=lambda r: -(r.get("mc") or 0))[:300]
-    for k in ("^BVSP", "^GSPC", "^IXIC", "BRL=X"):   # índices e dólar também ganham gráfico do dia
+    for k in ("^BVSP", "^GSPC", "^IXIC", "BRL=X") + tuple(c + "BRL=X" for c in FXUSD):   # índices, dólar e moedas também ganham gráfico do dia
         if hist and hist.get(k) and hist[k].get("p"): ativos.append({"t": k, "p": hist[k]["p"]})
     n = len(d["m"]); d["m"].append(minuto)
     for r in ativos:
@@ -407,6 +445,8 @@ def main():
     if "USDBRL=X" in hist and "BRL=X" not in hist: hist["BRL=X"] = hist["USDBRL=X"]
     try: idx_reserva(hist, log)
     except Exception as e: log.append(f"Reserva de índices FALHOU: {str(e)[:120]}")
+    try: fx_cnbc(hist, log)
+    except Exception as e: log.append(f"Câmbio pela CNBC FALHOU: {str(e)[:120]}")
     log.append(f"Yahoo: {len(hist)} históricos ({len(syms) - len(ERR)} novos, {len(ERR)} falharam" + (f"; ex.: {ERR[0]}" if ERR else "") + ")")
     for r in br:
         h = hist.get(r["t"])
