@@ -962,7 +962,17 @@ function calcConv(){const a=parseFloat($("#cvAmt").value)||0,fr=$("#cvFrom").val
 $("#cvSwap").onclick=()=>{const a=$("#cvFrom").value;$("#cvFrom").value=$("#cvTo").value;$("#cvTo").value=a;calcConv()};
 // ---------- Gráfico da ação com períodos ----------
 const DATA=/github\.io$/.test(location.hostname)?"https://raw.githubusercontent.com/davicosban/Investimentos/main/site/":"";
-const dget=f=>fetch(DATA+f+(DATA?"?t="+Date.now():""),{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(f);return r.json()}).catch(e=>{if(!DATA)throw e;return fetch(f).then(r=>{if(!r.ok)throw new Error(f);return r.json()})});
+// Pega o commit mais recente do repositório e lê os dados direto dele: o endereço "main" do GitHub guarda cópia por até 5 min
+const tfetch=(u,o={},ms=15000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{...o,signal:c.signal}).finally(()=>clearTimeout(t))};
+let SHA=null,SHAET="";
+const headSha=async()=>{try{const h={Accept:"application/vnd.github.sha"};if(SHAET)h["If-None-Match"]=SHAET;
+  const r=await tfetch("https://api.github.com/repos/davicosban/Investimentos/commits/main",{headers:h,cache:"no-store"},10000);
+  if(r.status===304)return SHA;if(!r.ok)return null;SHAET=r.headers.get("ETag")||"";const v=(await r.text()).trim();return /^[0-9a-f]{40}$/.test(v)?v:null}catch(e){return null}};
+const HEAD0=DATA?headSha().then(v=>{SHA=v}):Promise.resolve();
+const jget=u=>tfetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(u);return r.json()});
+const dget=async f=>{if(!DATA)return jget(f);await HEAD0;
+  if(SHA){try{return await jget(DATA.replace("/main/","/"+SHA+"/")+f)}catch(e){}}
+  try{return await jget(DATA+f+"?t="+Date.now())}catch(e){return jget(f)}};
 const HX={};const hxName=s=>s.replace(/[^A-Za-z0-9]/g,"_")+".json";
 function loadHX(sym){if(HX[sym]!==undefined)return Promise.resolve(HX[sym]);
   return dget("hx/"+hxName(sym)).catch(()=>null).then(j=>(HX[sym]=j))}
@@ -1336,11 +1346,13 @@ fillProducts();calcTop();calcRF();calcCmp();calcJC();calcEQ();calcMeta();renderD
 const ct=store.get("ctab","top");if(ct!=="top")$(`#ctabs button[data-v="${ct}"]`)?.click();
 if(!location.hash){const t=store.get("tab","mercado");if(t!=="mercado")location.hash=t}
 route();
-// Site/app instalado pelo navegador: confere a cada 5 min se há dados novos e recarrega sozinho
+// Site/app instalado pelo navegador: confere a cada minuto se há um commit novo no repositório e recarrega sozinho
 // Também confere na hora em que o app volta para a tela (no celular o relógio do app para quando ele fica em segundo plano)
 if(location.protocol==="https:"&&/github\.io$/.test(location.hostname)){let busy=0;
   const fresh=async()=>{if(busy||document.hidden||!$("#modal").hidden||!$("#umenu").hidden)return;busy=1;
-    try{const j=await dget("asof.json");if(j.asof&&ASOF&&j.asof!==ASOF){try{sessionStorage.setItem("voltaY",String(scrollY))}catch(e){}location.reload();return}}catch(e){}busy=0};
+    try{let novo=false;await HEAD0;const sh=await headSha();
+      if(sh&&SHA)novo=sh!==SHA;else{const j=await dget("asof.json");novo=!!(j.asof&&ASOF&&j.asof!==ASOF)}
+      if(novo){try{sessionStorage.setItem("voltaY",String(scrollY))}catch(e){}location.reload();return}}catch(e){}finally{busy=0}};
   setInterval(fresh,60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)fresh()});addEventListener("pageshow",e=>{if(e.persisted)fresh()});
   addEventListener("focus",fresh);
   try{const y=+sessionStorage.getItem("voltaY");if(y){sessionStorage.removeItem("voltaY");setTimeout(()=>scrollTo(0,y),900)}}catch(e){}}
