@@ -39,19 +39,19 @@
   --glass:#FFFFFF; --glow:none; --tape:#ECEAE4; --tape-ink:#16150F; --tape-muted:#67655D; --tape-line:rgba(28,26,20,.12); --tape-up:#0B8A55; --tape-down:#D23B2F;
   --shadow:0 1px 2px rgba(28,26,20,.05),0 4px 12px -6px rgba(28,26,20,.10);
   --f-display:"Geist",system-ui,sans-serif; --f-body:"Geist",system-ui,sans-serif; --f-num:"Geist",system-ui,sans-serif; --f-mono:"Geist Mono",ui-monospace,monospace;
-  --s1:#396ed6;--s2:#c65b93;--s3:#e3a42e;--s4:#00aa95;--s5:#de6640;--s6:#7250ba;--s7:#298a41;--s8:#ec4647;--s0:#B9B6AC; --r:14px; --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
+  --s1:#366bc4;--s2:#ab5b8a;--s3:#d5a13c;--s4:#10a6ad;--s5:#c66846;--s6:#7860b5;--s7:#318f5a;--s8:#ec4647;--s0:#B9B6AC; --r:14px; --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E0F11; --bg2:#141518; --surface:#16181B; --surface2:#1D1F23; --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
   --ink:#ECEDEF; --muted:#8E9198; --accent:#6C9CFF; --accent2:#93B6FF; --accent-ink:#0B0C0E;
   --up:#34C98B; --down:#FF6A5E; --upbg:rgba(52,201,139,.12); --downbg:rgba(255,106,94,.12); --warn:#F0BE55; --warnbg:rgba(240,190,85,.12);
-  --s1:#4a81eb;--s2:#d4679f;--s3:#cf9105;--s4:#16b09b;--s5:#e26943;--s6:#8f6edb;--s7:#46a359;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
+  --s1:#5087e3;--s2:#c270a0;--s3:#c8942d;--s4:#26afb6;--s5:#d47452;--s6:#9881d9;--s7:#4ca871;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E0F11; --bg2:#141518; --surface:#16181B; --surface2:#1D1F23; --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
   --ink:#ECEDEF; --muted:#8E9198; --accent:#6C9CFF; --accent2:#93B6FF; --accent-ink:#0B0C0E;
   --up:#34C98B; --down:#FF6A5E; --upbg:rgba(52,201,139,.12); --downbg:rgba(255,106,94,.12); --warn:#F0BE55; --warnbg:rgba(240,190,85,.12);
-  --s1:#4a81eb;--s2:#d4679f;--s3:#cf9105;--s4:#16b09b;--s5:#e26943;--s6:#8f6edb;--s7:#46a359;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
+  --s1:#5087e3;--s2:#c270a0;--s3:#c8942d;--s4:#26afb6;--s5:#d47452;--s6:#9881d9;--s7:#4ca871;--s8:#eb6263;--s0:#4A4D54; --glass:#16181B; --glow:none; --tape:#000000; --tape-ink:#ECEDEF; --tape-muted:rgba(236,237,239,.55); --tape-line:rgba(255,255,255,.12); --tape-up:#4BD69B; --tape-down:#FF7A6E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}
 *{box-sizing:border-box}
 html{background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
@@ -1387,8 +1387,8 @@ function renderCart(enter){if(!BR.length&&!US.length)return;const fx=usdbrl(),ps
   $("#cartRF").innerHTML=rfr.length?`<thead><tr><th class="l">Investimento</th><th class="l">Tipo</th><th class="l">Rentabilidade</th><th class="l">Aplicado em</th><th class="l">Vencimento</th><th class="n">Aplicado</th><th class="n">Valor bruto</th><th class="n">Líquido</th><th class="n">Resultado</th></tr></thead><tbody>${rfr.map(y=>{const x=y.x,dt=d=>d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"–";return `<tr style="cursor:default"><td class="l t">${esc(y.name)}</td><td class="l small">${esc(RFT[x.tp][0])}</td><td class="l">${esc(rfDesc(x))}</td><td class="l">${dt(x.d)}</td><td class="l">${dt(x.venc)}${y.venceu?' <span class="pill">venceu</span>':""}</td><td class="n">${brl(x.v)}</td><td class="n">${x.ix==="man"?`<input class="upd" type="number" step="0.01" data-upd="${esc(x.id)}" value="${(x.cur!=null?x.cur:x.v).toFixed(2)}" aria-label="Valor atual de ${esc(y.name)}">`:brl(y.gross)}</td><td class="n">${brl(y.liq)}</td><td class="n ${cls(y.res)}">${brs(y.res)} <span class="small">(${pct(x.v?y.res/x.v*100:0)})</span></td></tr>`}).join("")}</tbody>`:"";
   const dist=$("#cartDist");dist.hidden=!all.length;
   const paintBar=(box,_,segs)=>donut(box,segs,tot);
-  if(all.length){const top=all.slice(0,7),rest=all.slice(7).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--s0)"]);paintBar($("#dnA"),0,sg);
-    const CLS=[["Ações Brasil",CCOL[0]],["FIIs",CCOL[1]],["ETFs",CCOL[2]],["Tesouro Direto",CCOL[3]],["Fundos e outros",CCOL[4]],["Ações EUA",CCOL[5]],["Renda fixa",CCOL[6]]];
+  if(all.length){const top=all.slice(0,all.length>6?5:6),rest=all.slice(top.length).reduce((s,x)=>s+x.val,0);const sg=top.map((x,i)=>[x.name,x.val,CCOL[i]]);if(rest>0)sg.push(["Outros",rest,"var(--s0)"]);paintBar($("#dnA"),0,sg);
+    const CLS=[["Ações Brasil",CCOL[0]],["Fundos e outros",CCOL[1]],["ETFs",CCOL[2]],["Tesouro Direto",CCOL[3]],["FIIs",CCOL[4]],["Ações EUA",CCOL[5]],["Renda fixa",CCOL[6]]];
     paintBar($("#dnC"),0,CLS.map(([c,col])=>[c,all.filter(x=>x.cl===c).reduce((s,x)=>s+x.val,0),col]).filter(x=>x[1]>0))}
   const H2=[...CART].sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:b.ts-a.ts);
   $("#cartH").innerHTML=H2.length?`<thead><tr><th class="l">Data</th><th class="l">Operação</th><th class="l">Ativo</th><th class="n">Qtd</th><th class="n">Preço</th><th class="n">Total</th><th></th></tr></thead><tbody>${H2.map(x=>{const dt=`<td class="l">${new Date(x.d+"T12:00:00").toLocaleDateString("pt-BR")}</td>`,del=`<td class="n"><button class="del" type="button" data-del="${esc(x.id)}">Excluir</button></td>`;
