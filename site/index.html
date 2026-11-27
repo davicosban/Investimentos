@@ -77,6 +77,9 @@ nav.tabs a:hover{color:var(--ink)}
 nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--bg)}
 .dbar{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 8px 8px 14px}
 .dbar button{padding:6px 14px}
+.mkt{display:flex;align-items:center;gap:10px;margin:-4px 0 14px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;color:var(--ink)}
+.mkt::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 4px var(--warnbg)}
+.mkt b{font-weight:600}.mkt .muted{font-size:12.5px}
 .dbar[hidden],[hidden]{display:none!important}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* type */
@@ -574,6 +577,7 @@ html.menu-open header.top,html.menu-open header.top *{-webkit-app-region:no-drag
 
 <section id="v-eua" hidden>
   <h2>Bolsa EUA <span class="muted small" id="euacount"></span></h2>
+  <div class="mkt" id="usAviso" role="status" hidden></div>
   <div class="toolbar">
     <input type="search" id="euaq" placeholder="Buscar ticker ou empresa (ex.: AAPL, Nvidia)">
     <select id="euasec"><option value="">Todos os setores</option></select>
@@ -1110,6 +1114,24 @@ async function initCloud(){if(!/github\.io$/.test(location.hostname))return;let 
   A.onAuthStateChanged(auth,u=>{CLOUD.user=u;ACCT.user=u;ACCT.last=u?{displayName:u.displayName,email:u.email,photoURL:u.photoURL}:null;try{u?localStorage.setItem("conta",JSON.stringify(ACCT.last)):localStorage.removeItem("conta")}catch(e){}CLOUD.sync=u?"pend":null;paintAcct();if(CLOUD.unsub){CLOUD.unsub();CLOUD.unsub=null}if(u)cloudSync()});
   document.addEventListener("visibilitychange",()=>{if(!document.hidden&&CLOUD.user&&CLOUD.sync==="erro")cloudSync()});}
 initCloud().catch(e=>console.warn("conta:",e));
+// ---------- Aviso na aba EUA: horário de abertura/fechamento de lá enquanto a B3 está aberta ----------
+const NYSE_FER=new Set(["2026-01-01","2026-01-19","2026-02-16","2026-04-03","2026-05-25","2026-06-19","2026-07-03","2026-09-07","2026-11-26","2026-12-25","2027-01-01","2027-01-18","2027-02-15","2027-03-26","2027-05-31","2027-06-18","2027-07-05","2027-09-06","2027-11-25","2027-12-24"]);
+const NYSE_CEDO={"2026-11-27":"do dia seguinte ao feriado de Ação de Graças","2026-12-24":"da véspera de Natal","2027-11-26":"do dia seguinte ao feriado de Ação de Graças"};   // fecha às 13h de Nova York
+const B3_FER=new Set(["2026-01-01","2026-02-16","2026-02-17","2026-04-03","2026-04-21","2026-05-01","2026-06-04","2026-09-07","2026-10-12","2026-11-02","2026-11-20","2026-12-24","2026-12-25","2026-12-31","2027-01-01","2027-02-08","2027-02-09","2027-03-26","2027-04-21","2027-05-27","2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-24","2027-12-31"]);
+function tzParts(d,tz){const o={};new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23",weekday:"short"}).formatToParts(d).forEach(p=>o[p.type]=p.value);return {dia:`${o.year}-${o.month}-${o.day}`,min:+o.hour*60+ +o.minute,fds:o.weekday==="Sat"||o.weekday==="Sun"}}
+function usAviso(){const el=$("#usAviso");if(!el)return;const now=new Date(),br=tzParts(now,"America/Sao_Paulo"),ny=tzParts(now,"America/New_York");
+  const dif=br.min-ny.min+(br.dia>ny.dia?1440:br.dia<ny.dia?-1440:0);   // minutos que Brasília está à frente de Nova York (1 ou 2 h)
+  const b3Fim=dif>=120?18*60:17*60;   // B3 fecha às 18h quando os EUA estão no horário de inverno, 17h no de verão
+  const b3Aberta=!br.fds&&!B3_FER.has(br.dia)&&br.min>=10*60&&br.min<b3Fim;
+  const hm=m=>{m=((m%1440)+1440)%1440;const h=Math.floor(m/60),mm=m%60;return h+"h"+(mm?String(mm).padStart(2,"0"):"")};
+  const abre=9*60+30,fecha=NYSE_CEDO[ny.dia]?13*60:16*60;let msg="";
+  if(b3Aberta){
+    if(ny.fds||NYSE_FER.has(ny.dia))msg=`<span><b>A bolsa dos EUA está fechada hoje</b> (feriado lá). Os preços abaixo são do último pregão.</span>`;
+    else if(ny.min<abre)msg=`<span><b>A bolsa dos EUA abre hoje às ${hm(abre+dif)}</b> (horário de Brasília). Até lá, os preços abaixo são do último fechamento.</span>`;
+    else if(ny.min>=fecha)msg=`<span><b>A bolsa dos EUA já fechou hoje, às ${hm(fecha+dif)}</b> (horário de Brasília)${NYSE_CEDO[ny.dia]?`, mais cedo por causa ${NYSE_CEDO[ny.dia]}`:""}. Os preços abaixo são do fechamento.</span>`;
+    else if(NYSE_CEDO[ny.dia])msg=`<span><b>A bolsa dos EUA fecha hoje mais cedo, às ${hm(fecha+dif)}</b> (horário de Brasília), por causa ${NYSE_CEDO[ny.dia]}.</span>`}
+  el.innerHTML=msg;el.hidden=!msg}
+usAviso();setInterval(usAviso,60*1000);
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
 const MOB=()=>innerWidth<=640;
@@ -1314,7 +1336,7 @@ getData().then(([b,u,h])=>{
   BR=b;US=u;H=h;
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{INTRA=j}).catch(()=>{});
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}
