@@ -138,8 +138,20 @@ def intraday(sym):
 # ---------- Índices e dólar sem depender do Yahoo ----------
 # O Yahoo às vezes bloqueia o GitHub (erro 429) e o Ibovespa, o S&P, a Nasdaq e o dólar ficavam parados.
 # Fontes grátis de reserva, na ordem: Google Finance (página), Stooq (CSV) e, para o dólar, AwesomeAPI.
-IDXSRC = {"^BVSP": ("IBOV:INDEXBVMF", "^bvp", -10800), "^GSPC": (".INX:INDEXSP", "^spx", -18000),
-          "^IXIC": (".IXIC:INDEXNASDAQ", "^ndq", -18000), "BRL=X": ("USD-BRL", "usdbrl", -10800)}
+IDXSRC = {"^BVSP": ("IBOV:INDEXBVMF", "^bvp", -10800, ".BVSP"), "^GSPC": (".INX:INDEXSP", "^spx", -18000, ".SPX"),
+          "^IXIC": (".IXIC:INDEXNASDAQ", "^ndq", -18000, ".IXIC"), "BRL=X": ("USD-BRL", "usdbrl", -10800, "BRL=")}
+
+def idx_cnbc(code):
+    j = jget("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=" + urllib.parse.quote(code)
+             + "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json")
+    q = j["FormattedQuoteResult"]["FormattedQuote"][0]
+    px = float(str(q["last"]).replace(",", "").replace("%", ""))
+    t = q.get("last_time_msec") or q.get("last_timedate")
+    try: t = int(t) // 1000
+    except Exception:
+        try: t = int(datetime.datetime.fromisoformat(str(q.get("last_time"))).timestamp())
+        except Exception: t = int(time.time())
+    return px, min(t, int(time.time()))
 
 def idx_google(code):
     h = get("https://www.google.com/finance/quote/" + code + "?hl=en", tries=1, timeout=15)
@@ -159,25 +171,28 @@ def idx_awesome(_):
 
 def idx_reserva(hist, log):
     feitos = []
-    for key, (g, st, off) in IDXSRC.items():
+    erros = []
+    for key, (g, st, off, cn) in IDXSRC.items():
         h = hist.get(key)
         if not h or not h.get("c"): continue
-        fontes = [("Google", idx_google, g), ("Stooq", idx_stooq, st)] + ([("AwesomeAPI", idx_awesome, None)] if key == "BRL=X" else [])
+        fontes = [("CNBC", idx_cnbc, cn), ("Google", idx_google, g), ("Stooq", idx_stooq, st)] + ([("AwesomeAPI", idx_awesome, None)] if key == "BRL=X" else [])
         for nome, fn, code in fontes:
             try:
                 px, t = fn(code)
                 if not px or px <= 0: continue
-            except Exception:
-                continue
-            if h.get("t") and t <= h["t"]: break          # o que já temos é mais novo
-            day = (t + off) // 86400; last = h["d0"] + sum(h["dd"])
-            if day < last: break
-            if day == last: h["c"][-1] = float("%.5g" % px)
-            else: h["dd"].append(day - last); h["c"].append(float("%.5g" % px))
+            except Exception as e:
+                erros.append(f"{nome} {key}: {str(e)[:80]}"); continue
+            if h.get("t") and t <= h["t"]:                 # o que já temos é mais novo
+                erros.append(f"{nome} {key}: {px} de {datetime.datetime.utcfromtimestamp(t):%d/%m %H:%M} UTC não é mais novo"); break
+            # compara o dia da cotação nova com o dia da última cotação guardada (h["t"]): mesmo dia troca a última barra, dia novo cria outra
+            day = (t + off) // 86400; dh = (h["t"] + off) // 86400 if h.get("t") else h["d0"] + sum(h["dd"])
+            if day < dh: break
+            if day == dh: h["c"][-1] = float("%.5g" % px)
+            else: h["dd"].append(day - dh); h["c"].append(float("%.5g" % px))
             h["p"] = px; h["t"] = t
             h["hi"] = max(h.get("hi") or px, px); h["lo"] = min(h.get("lo") or px, px)
             feitos.append(f"{key} {px} ({nome})"); break
-    log.append("Índices e dólar pela reserva: " + (", ".join(feitos) if feitos else "nada mais novo"))
+    log.append("Índices e dólar pela reserva: " + (", ".join(feitos) if feitos else "nada mais novo") + (" | " + "; ".join(erros[:8]) if erros else ""))
 
 # ---------- Câmbio (moedas em reais) ----------
 FX = ["USDBRL=X", "EURBRL=X", "GBPBRL=X", "ARSBRL=X", "CHFBRL=X", "JPYBRL=X", "CNYBRL=X", "CADBRL=X", "AUDBRL=X", "MXNBRL=X", "CLPBRL=X", "UYUBRL=X"]
