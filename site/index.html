@@ -79,7 +79,7 @@ nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--bg)}
 .dbar button{padding:6px 14px}
 .mkt{display:flex;align-items:center;gap:10px;margin:-4px 0 14px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;color:var(--ink)}
 .mkt::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 4px var(--warnbg)}
-.mkt b{font-weight:600}.mkt .muted{font-size:12.5px}
+.mkt.on::before{background:var(--up);box-shadow:0 0 0 4px var(--upbg)}.mkt b{font-weight:600}.mkt .muted{font-size:12.5px}
 .dbar[hidden],[hidden]{display:none!important}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* type */
@@ -565,6 +565,7 @@ html.menu-open header.top,html.menu-open header.top *{-webkit-app-region:no-drag
 
 <section id="v-b3" hidden>
   <h2>Bolsa Brasil <span class="muted small" id="b3count"></span></h2>
+  <div class="mkt" id="b3Aviso" role="status" hidden></div>
   <div class="toolbar">
     <input type="search" id="b3q" placeholder="Buscar ticker ou empresa (ex.: PETR4, Itaú)">
     <select id="b3sec"><option value="">Todos os setores</option></select>
@@ -1142,18 +1143,26 @@ const NYSE_FER=new Set(["2026-01-01","2026-01-19","2026-02-16","2026-04-03","202
 const NYSE_CEDO={"2026-11-27":"do dia seguinte ao feriado de Ação de Graças","2026-12-24":"da véspera de Natal","2027-11-26":"do dia seguinte ao feriado de Ação de Graças"};   // fecha às 13h de Nova York
 const B3_FER=new Set(["2026-01-01","2026-02-16","2026-02-17","2026-04-03","2026-04-21","2026-05-01","2026-06-04","2026-09-07","2026-10-12","2026-11-02","2026-11-20","2026-12-24","2026-12-25","2026-12-31","2027-01-01","2027-02-08","2027-02-09","2027-03-26","2027-04-21","2027-05-27","2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-24","2027-12-31"]);
 function tzParts(d,tz){const o={};new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23",weekday:"short"}).formatToParts(d).forEach(p=>o[p.type]=p.value);return {dia:`${o.year}-${o.month}-${o.day}`,min:+o.hour*60+ +o.minute,fds:o.weekday==="Sat"||o.weekday==="Sun"}}
-function usAviso(){const el=$("#usAviso");if(!el)return;const now=new Date(),br=tzParts(now,"America/Sao_Paulo"),ny=tzParts(now,"America/New_York");
-  const dif=br.min-ny.min+(br.dia>ny.dia?1440:br.dia<ny.dia?-1440:0);   // minutos que Brasília está à frente de Nova York (1 ou 2 h)
-  const b3Fim=dif>=120?18*60:17*60;   // B3 fecha às 18h quando os EUA estão no horário de inverno, 17h no de verão
-  const b3Aberta=!br.fds&&!B3_FER.has(br.dia)&&br.min>=10*60&&br.min<b3Fim;
-  const hm=m=>{m=((m%1440)+1440)%1440;const h=Math.floor(m/60),mm=m%60;return h+"h"+(mm?String(mm).padStart(2,"0"):"")};
-  const abre=9*60+30,fecha=NYSE_CEDO[ny.dia]?13*60:16*60;let msg="";
-  if(b3Aberta){
-    if(ny.fds||NYSE_FER.has(ny.dia))msg=`<span><b>A bolsa dos EUA está fechada hoje</b> (feriado lá). Os preços abaixo são do último pregão.</span>`;
-    else if(ny.min<abre)msg=`<span><b>A bolsa dos EUA abre hoje às ${hm(abre+dif)}</b> (horário de Brasília). Até lá, os preços abaixo são do último fechamento.</span>`;
-    else if(ny.min>=fecha)msg=`<span><b>A bolsa dos EUA já fechou hoje, às ${hm(fecha+dif)}</b> (horário de Brasília)${NYSE_CEDO[ny.dia]?`, mais cedo por causa ${NYSE_CEDO[ny.dia]}`:""}. Os preços abaixo são do fechamento.</span>`;
-    else if(NYSE_CEDO[ny.dia])msg=`<span><b>A bolsa dos EUA fecha hoje mais cedo, às ${hm(fecha+dif)}</b> (horário de Brasília), por causa ${NYSE_CEDO[ny.dia]}.</span>`}
-  el.innerHTML=msg;el.hidden=!msg}
+const B3_TARDE={"2026-02-18":13*60,"2027-02-10":13*60};   // Quarta-feira de Cinzas: B3 abre às 13h
+// Data e hora "de parede" num fuso -> instante real
+function zoned(dia,min,tz){const [y,m,d]=dia.split("-").map(Number);let t=Date.UTC(y,m-1,d,0,min);for(let k=0;k<2;k++){const p=tzParts(new Date(t),tz);const [py,pm,pd]=p.dia.split("-").map(Number);t+=(Date.UTC(y,m-1,d,0,min)-Date.UTC(py,pm-1,pd,0,p.min))}return new Date(t)}
+const addDia=(dia,n)=>{const [y,m,d]=dia.split("-").map(Number);return new Date(Date.UTC(y,m-1,d+n)).toISOString().slice(0,10)};
+const fdsDia=dia=>{const w=new Date(dia+"T12:00:00Z").getUTCDay();return w===0||w===6};
+// Horário de cada pregão num dia (no fuso da bolsa); null = fechada o dia todo
+const MERC={
+  b3:{tz:"America/Sao_Paulo",dia(d){if(fdsDia(d)||B3_FER.has(d))return null;const ny=tzParts(zoned(d,12*60,"America/Sao_Paulo"),"America/New_York");const dif=720-ny.min;return {a:B3_TARDE[d]||10*60,f:dif>=120?18*60:17*60}}},
+  us:{tz:"America/New_York",dia(d){if(fdsDia(d)||NYSE_FER.has(d))return null;return {a:9*60+30,f:NYSE_CEDO[d]?13*60:16*60,cedo:NYSE_CEDO[d]}}}};
+function hmBR(t){const p=tzParts(t,"America/Sao_Paulo"),h=Math.floor(p.min/60),m=p.min%60;return h+"h"+(m?String(m).padStart(2,"0"):"")}
+function quandoBR(t){const hoje=tzParts(new Date(),"America/Sao_Paulo").dia,d=tzParts(t,"America/Sao_Paulo").dia;if(d===hoje)return "hoje";if(d===addDia(hoje,1))return "amanhã";
+  const w=["domingo","segunda","terça","quarta","quinta","sexta","sábado"][new Date(d+"T12:00:00Z").getUTCDay()];return `${w} (${d.slice(8)}/${d.slice(5,7)})`}
+function pregao(k){const M=MERC[k],now=new Date(),p=tzParts(now,M.tz),h=M.dia(p.dia);
+  if(h&&p.min>=h.a&&p.min<h.f)return {aberta:true,fecha:zoned(p.dia,h.f,M.tz),cedo:h.cedo};
+  let d=p.dia;if(!h||p.min>=h.f)d=addDia(d,1);for(let n=0;n<15;n++,d=addDia(d,1)){const x=M.dia(d);if(x)return {aberta:false,abre:zoned(d,x.a,M.tz),motivo:!h?(fdsDia(p.dia)?"fim de semana":"feriado"):p.min>=h.f?"já encerrou hoje":""}}return {aberta:false}}
+function mktAviso(id,k,nome){const el=$(id);if(!el)return;const s=pregao(k);let msg;
+  if(s.aberta)msg=`<span><b>${nome} aberta</b> · fecha ${quandoBR(s.fecha)==="hoje"?"":quandoBR(s.fecha)+" "}às ${hmBR(s.fecha)}${s.cedo?`, mais cedo por causa ${s.cedo}`:""} <span class="muted">(horário de Brasília)</span></span>`;
+  else msg=`<span><b>${nome} fechada</b>${s.motivo?` (${s.motivo})`:""}${s.abre?` · abre ${quandoBR(s.abre)} às ${hmBR(s.abre)}`:""} <span class="muted">(horário de Brasília)</span></span>`;
+  el.innerHTML=msg;el.hidden=false;el.classList.toggle("on",!!s.aberta)}
+function usAviso(){mktAviso("#b3Aviso","b3","Bolsa brasileira");mktAviso("#usAviso","us","Bolsa americana")}
 usAviso();setInterval(usAviso,60*1000);
 let DET=null;
 const ppf=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),2)+" p.p.";
@@ -1363,7 +1372,7 @@ getData().then(([b,u,h])=>{
   if(H["BRL=X"]&&H["USDBRL=X"])H["USDBRL=X"]={...H["BRL=X"],n:H["USDBRL=X"].n};
   for(const r of US){if(r.c==null&&H[r.t])r.c=dchg(r.t)}
   for(const r of BR){if(!r.n&&H[r.t])r.n=H[r.t].n||""}
-  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · atualiza a cada 15 min no pregão · não é tempo real`;
+  $("#asof").textContent=`Dados de ${ASOF} (horário de Brasília) · não é tempo real`;
   renderOverview();renderFX();
   dget("intraday.json").then(j=>{if(j&&j.p&&j.p["BRL=X"])j.p["USDBRL=X"]=j.p["BRL=X"];INTRA=j}).catch(()=>{});dget("semana.json").then(j=>{((j&&j.dias)||[]).forEach(D=>{if(D.p&&D.p["BRL=X"])D.p["USDBRL=X"]=D.p["BRL=X"]});SEMANA=j}).catch(()=>{});
   if(DATA){try{calcTop();calcRF();calcCmp();calcEQ();renderDsRF()}catch(e){}}
